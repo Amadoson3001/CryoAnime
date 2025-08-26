@@ -186,7 +186,11 @@ body {
 
 .live2d-widget {
   position: fixed !important;
-  right: -99rem !important;
+  right: -97rem !important;
   bottom: 0px !important;
   left: auto !important;
+}
+
+.hidetools {
+  display: none;
 }

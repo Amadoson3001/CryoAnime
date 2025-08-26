@@ -51,7 +51,6 @@ const TopRatedPage = () => {
             }
         } catch (err) {
             setError('Failed to load top-rated anime. Please try again.')
-            console.error('Error fetching top-rated anime:', err)
         } finally {
             setLoading(false)
             setIsPageLoading(false)
@@ -143,6 +142,158 @@ const TopRatedPage = () => {
         return pages
     }
 
+    // Full-page loading screen
+    if (loading && isInitialLoad) {
+        return (
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#0f172a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    flexDirection: 'column'
+                }}
+            >
+                {/* Animated background elements */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '20%',
+                            left: '10%',
+                            width: '60px',
+                            height: '60px',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 3s ease-in-out infinite'
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '60%',
+                            right: '15%',
+                            width: '40px',
+                            height: '40px',
+                            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 4s ease-in-out infinite reverse'
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '30%',
+                            left: '20%',
+                            width: '30px',
+                            height: '30px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 2.5s ease-in-out infinite'
+                        }}
+                    />
+                </div>
+
+                {/* Main loading content */}
+                <div
+                    style={{
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        padding: '48px',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(51, 65, 85, 0.5)',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+                        animation: 'slideInUp 0.8s ease-out',
+                        position: 'relative',
+                        zIndex: 1
+                    }}
+                >
+                    <div style={{ marginBottom: '24px' }}>
+                        <Star size={48} style={{ color: '#fbbf24', animation: 'spin 2s linear infinite' }} />
+                    </div>
+
+                    <h2 style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 'bold',
+                        color: 'white',
+                        marginBottom: '8px',
+                        animation: 'fadeIn 1s ease-out'
+                    }}>
+                        Loading Top Rated Anime
+                    </h2>
+
+                    <p style={{
+                        color: '#cbd5e1',
+                        fontSize: '0.875rem',
+                        animation: 'fadeIn 1s ease-out 0.2s both'
+                    }}>
+                        Discovering the best anime of all time...
+                    </p>
+
+                    {/* Loading bar */}
+                    <div style={{
+                        width: '200px',
+                        height: '3px',
+                        backgroundColor: 'rgba(51, 65, 85, 0.5)',
+                        borderRadius: '2px',
+                        marginTop: '24px',
+                        overflow: 'hidden'
+                    }}>
+                        <div
+                            style={{
+                                height: '100%',
+                                background: 'linear-gradient(90deg, #3b82f6, #fbbf24)',
+                                borderRadius: '2px',
+                                animation: 'loadingBar 2s ease-in-out infinite'
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <style jsx global>{`
+                    @keyframes float {
+                        0%, 100% { transform: translateY(0px) rotate(0deg); }
+                        50% { transform: translateY(-20px) rotate(180deg); }
+                    }
+
+                    @keyframes slideInUp {
+                        from {
+                            opacity: 0;
+                            transform: translateY(30px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+
+                    @keyframes loadingBar {
+                        0% { width: 0%; }
+                        50% { width: 100%; }
+                        100% { width: 0%; }
+                    }
+                `}</style>
+            </div>
+        )
+    }
+
     return (
         <>
             <Header />
@@ -150,8 +301,6 @@ const TopRatedPage = () => {
                 style={{
                     backgroundColor: '#0f172a',
                     minHeight: '100vh',
-                    opacity: isInitialLoad ? 0 : 1,
-                    animation: isInitialLoad ? 'none' : 'fadeInUp 0.6s ease-out',
                     paddingTop: '5rem'
                 }}
             >

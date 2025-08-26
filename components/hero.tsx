@@ -288,7 +288,7 @@ const Hero = () => {
                 1M+
               </Text>
               <Text as="div" size="3" style={{ color: '#cbd5e1' }}>
-                Active Users
+                Fun things.
               </Text>
             </Box>
             <Box
@@ -311,12 +311,12 @@ const Hero = () => {
                     fontSize: '2.5rem'
                   }}
                 >
-                  4.8
+                  1K+
                 </Text>
                 <Star size={24} style={{ color: '#fbbf24' }} fill="currentColor" />
               </Flex>
               <Text as="div" size="3" style={{ color: '#cbd5e1' }}>
-                User Rating
+                Anime stars.
               </Text>
             </Box>
           </Grid>

@@ -145,7 +145,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
 
     // Retry function for manual retries
     const retryInitialization = () => {
-        console.log('Manual retry requested');
         setIsRetrying(true);
         setError(null);
 
@@ -168,17 +167,15 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
     useEffect(() => {
         const initializeLive2D = async () => {
             try {
-                console.log('Starting Live2D initialization...');
-
                 // Check if widget is already loaded with multiple possible global variables
                 const possibleGlobals = ['L2Dwidget', 'live2d', 'Live2D', 'L2D'];
                 let existingWidget = null;
 
                 for (const globalName of possibleGlobals) {
                     if (window[globalName as keyof Window]) {
-                        console.log(`Found existing widget: ${globalName}`);
                         existingWidget = window[globalName as keyof Window];
                         window.document.getElementById("live2d")?.setAttribute("class", "live2d-widget");
+                        window.document.getElementById("waifu-tips")?.setAttribute("class", "hidetools");
                         break;
                     }
                 }
@@ -201,7 +198,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                         // Check if script is already loaded
                         const existingScript = document.querySelector(`script[src="${src}"]`);
                         if (existingScript) {
-                            console.log('Script already loaded, resolving immediately');
                             resolve();
                             return;
                         }
@@ -210,11 +206,9 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                         script.src = src;
                         script.async = true;
                         script.onload = () => {
-                            console.log(`Script loaded successfully: ${src}`);
                             resolve();
                         };
                         script.onerror = (event) => {
-                            console.error(`Failed to load script: ${src}`, event);
                             reject(new Error(`Failed to load script: ${src}`));
                         };
                         document.head.appendChild(script);
@@ -222,7 +216,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                 };
 
                 // Load the main Live2D widget script
-                console.log('Loading Live2D widget script...');
                 await loadScript('https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js');
 
                 // Wait for widget to be available with improved detection
@@ -231,12 +224,9 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                 const baseDelay = 100; // Start with 100ms
 
                 const checkWidget = () => {
-                    console.log(`Widget check attempt ${attempts + 1}/${maxAttempts}`);
-
                     // Check multiple possible global variables
                     for (const globalName of possibleGlobals) {
                         if (window[globalName as keyof Window]) {
-                            console.log(`Widget found with global: ${globalName}`);
                             widgetRef.current = window[globalName as keyof Window];
 
                             // Try to initialize the widget if it's a function
@@ -244,7 +234,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                                 try {
                                     widgetRef.current(mergedSettings);
                                 } catch (initError) {
-                                    console.warn('Widget function call failed:', initError);
                                 }
                             }
 
@@ -256,7 +245,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
 
                     // Also check for common Live2D initialization patterns
                     if (window.live2d_settings && (window as any).loadlive2d) {
-                        console.log('Found Live2D initialization pattern');
                         try {
                             (window as any).loadlive2d();
                             widgetRef.current = { settings: mergedSettings };
@@ -264,7 +252,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                             onLoad?.();
                             return;
                         } catch (initError) {
-                            console.warn('Live2D initialization failed:', initError);
                         }
                     }
 
@@ -276,7 +263,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                         retryTimeoutRef.current = timeoutId;
                     } else {
                         // Try alternative initialization methods before giving up
-                        console.warn('Max attempts reached, trying alternative initialization...');
 
                         // Try to manually initialize if possible
                         if ((window as any).initLive2D) {
@@ -287,7 +273,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
                                 onLoad?.();
                                 return;
                             } catch (fallbackError) {
-                                console.error('Fallback initialization failed:', fallbackError);
                             }
                         }
 
@@ -299,7 +284,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
 
             } catch (err) {
                 const error = err instanceof Error ? err : new Error('Unknown error occurred');
-                console.error('Live2D initialization error:', error);
                 setError(error);
                 onError?.(error);
             }

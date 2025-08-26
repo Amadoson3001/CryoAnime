@@ -7,12 +7,16 @@ import { Theme } from '@radix-ui/themes'
 import '@radix-ui/themes/styles.css'
 import Script from 'next/script'
 import Live2dWaifu from '@/components/live2d-waifu'
+import CookieConsent from '@/components/cookie-consent'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'CryoAnime - Discover Your Next Favorite Anime',
   description: 'Explore thousands of anime series, movies, and OVAs with CryoAnime. Find detailed information, reviews, recommendations, and connect with a passionate anime community.',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -22,7 +26,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <head>
+      <body className={inter.className} style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
         <Script
           id="theme-script"
           strategy="beforeInteractive"
@@ -33,8 +37,6 @@ export default function RootLayout({
             `,
           }}
         />
-      </head>
-      <body className={inter.className} style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
         <Theme
           accentColor="blue"
           grayColor="slate"
@@ -44,6 +46,7 @@ export default function RootLayout({
         >
           {children}
           <Live2dWaifu />
+          <CookieConsent />
         </Theme>
       </body>
     </html>

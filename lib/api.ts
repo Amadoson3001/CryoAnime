@@ -70,6 +70,28 @@ export interface AnimeData {
     url?: string
     embed_url?: string
   }
+  characters?: CharacterData[]
+}
+
+export interface CharacterData {
+  mal_id: number
+  url: string
+  images: {
+    jpg: {
+      image_url: string
+      small_image_url: string
+    }
+    webp?: {
+      image_url: string
+      small_image_url: string
+    }
+  }
+  name: string
+  name_kanji?: string
+  nicknames: string[]
+  favorites: number
+  about?: string
+  role: string
 }
 
 export interface Genre {
@@ -110,6 +132,50 @@ const MAX_RETRIES = 3
 const BASE_RETRY_DELAY = 2000 // 2 seconds base delay for retries
 let lastRequestTime = 0
 
+// Helper function to build sorted URL parameters
+const buildSortParams = (url: string, sort?: string, order?: string): string => {
+  let result = url;
+  
+  // Map our sort options to Jikan API parameters
+  if (sort) {
+    switch (sort) {
+      case 'popularity':
+        result += `&order_by=popularity`
+        // Invert the sort direction for popularity since lower numbers = more popular
+        if (order) {
+          result += `&sort=${order === 'desc' ? 'asc' : 'desc'}`
+        } else {
+          result += `&sort=asc` // Default to asc for popularity (most popular first)
+        }
+        break
+      case 'score':
+        result += `&order_by=score`
+        break
+      case 'recent':
+        result += `&order_by=start_date`
+        break
+      case 'title':
+        result += `&order_by=title`
+        break
+      default:
+        // Default to popularity if invalid sort option
+        result += `&order_by=popularity`
+    }
+
+    // Add sort direction for non-popularity sorts
+    if (sort !== 'popularity') {
+      if (order) {
+        result += `&sort=${order}`
+      } else {
+        // Default to descending order for other sorts
+        result += `&sort=desc`
+      }
+    }
+  }
+  
+  return result;
+}
+
 // Centralized API fetcher with caching
 const processAnimeData = (anime: AnimeData): AnimeData => {
   if (anime && !anime.year && anime.aired?.prop?.from?.year) {
@@ -140,7 +206,6 @@ async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
       // If we get a 429, wait and retry (except on final attempt)
       if (response.status === 429 && attempt < MAX_RETRIES) {
         const delay = BASE_RETRY_DELAY * Math.pow(2, attempt) // Exponential backoff starting at 2 seconds
-        console.warn(`Rate limited. Waiting ${delay}ms before retry ${attempt + 1}/${MAX_RETRIES} for ${endpoint}`)
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
@@ -166,14 +231,12 @@ async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
       // If this is the final attempt or a non-retryable error, throw it
       if (attempt === MAX_RETRIES || (error instanceof Error && !error.message.includes('429'))) {
         // Log the specific endpoint that failed
-        console.error(`Error fetching API endpoint "${endpoint}" after ${attempt + 1} attempts:`, error)
         throw error
       }
 
       // Wait before retrying (except on final attempt)
       if (attempt < MAX_RETRIES) {
         const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
-        console.warn(`Waiting ${delay}ms before retry ${attempt + 1}/${MAX_RETRIES} for ${endpoint}`)
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
@@ -211,43 +274,7 @@ export const fetchTopAnimeForLanding = async (includeNsfw = false): Promise<Anim
 
 export const fetchAnimeByGenre = async (genreId: number, page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
   let url = `anime?genres=${genreId}&page=${page}&limit=${limit}`
-
-  // Map our sort options to Jikan API parameters
-  if (sort) {
-    switch (sort) {
-      case 'popularity':
-        url += `&order_by=popularity`
-        // Invert the sort direction for popularity since lower numbers = more popular
-        if (order) {
-          url += `&sort=${order === 'desc' ? 'asc' : 'desc'}`
-        } else {
-          url += `&sort=asc` // Default to asc for popularity (most popular first)
-        }
-        break
-      case 'score':
-        url += `&order_by=score`
-        break
-      case 'recent':
-        url += `&order_by=start_date`
-        break
-      case 'title':
-        url += `&order_by=title`
-        break
-      default:
-        // Default to popularity if invalid sort option
-        url += `&order_by=popularity`
-    }
-
-    // Add sort direction for non-popularity sorts
-    if (sort !== 'popularity') {
-      if (order) {
-        url += `&sort=${order}`
-      } else {
-        // Default to descending order for other sorts
-        url += `&sort=desc`
-      }
-    }
-  }
+  url = buildSortParams(url, sort, order);
 
   const response = await fetchFromApi<AnimeResponse>(url, `genre_${genreId}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
   if (!includeNsfw) {
@@ -256,9 +283,19 @@ export const fetchAnimeByGenre = async (genreId: number, page = 1, limit = 20, i
   return response
 }
 
-export const fetchGenres = async (): Promise<GenresResponse> => {
-  const response = await fetchFromApi<GenresResponse>(`genres/anime`, `genres_anime`)
+export const fetchMovies = async (page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
+  let url = `anime?type=movie&page=${page}&limit=${limit}`
+  url = buildSortParams(url, sort, order);
+
+  const response = await fetchFromApi<AnimeResponse>(url, `movies_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
+  if (!includeNsfw) {
+    response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
+  }
   return response
+}
+
+export const fetchGenres = async (): Promise<GenresResponse> => {
+  return await fetchFromApi<GenresResponse>(`genres/anime`, `genres_anime`)
 }
 
 export const searchAnime = async (query: string, page = 1, limit = 20, includeNsfw = false): Promise<AnimeResponse> => {
@@ -275,6 +312,25 @@ export const fetchSeasonalAnime = async (year: number, season: string, page = 1,
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
   return response
+}
+
+// Helper function for sorting anime by popularity and score
+const sortAnimeByPopularityAndScore = (animeList: AnimeData[]): AnimeData[] => {
+  return animeList.sort((a, b) => {
+    // If both have popularity, sort by that
+    if (a.popularity !== undefined && b.popularity !== undefined) {
+      return a.popularity - b.popularity
+    }
+
+    // If only one has popularity, it comes first
+    if (a.popularity !== undefined) return -1
+    if (b.popularity !== undefined) return 1
+
+    // If neither has popularity, sort by score (descending)
+    const scoreA = a.score || 0
+    const scoreB = b.score || 0
+    return scoreB - scoreA
+  })
 }
 
 export const fetchSeasonalAnimeSorted = async (year: number, season: string, includeNsfw = false): Promise<AnimeData[]> => {
@@ -300,7 +356,6 @@ export const fetchSeasonalAnimeSorted = async (year: number, season: string, inc
            await new Promise(resolve => setTimeout(resolve, 2000)) // 2 second delay between pages
          }
        } catch (error) {
-         console.warn(`Failed to fetch page ${currentPage} for ${year} ${season}:`, error)
          // Continue with other pages even if one fails
          break
        }
@@ -308,23 +363,8 @@ export const fetchSeasonalAnimeSorted = async (year: number, season: string, inc
 
      // Sort by popularity (ascending order - lower number means more popular)
      // If popularity is not available, sort by score (descending)
-     return allAnime.sort((a, b) => {
-       // If both have popularity, sort by that
-       if (a.popularity !== undefined && b.popularity !== undefined) {
-         return a.popularity - b.popularity
-       }
-
-       // If only one has popularity, it comes first
-       if (a.popularity !== undefined) return -1
-       if (b.popularity !== undefined) return 1
-
-       // If neither has popularity, sort by score (descending)
-       const scoreA = a.score || 0
-       const scoreB = b.score || 0
-       return scoreB - scoreA
-     })
+     return sortAnimeByPopularityAndScore(allAnime)
    } catch (error) {
-     console.error(`Error fetching seasonal anime for ${year} ${season}:`, error)
      throw error
    }
  }
@@ -336,26 +376,11 @@ export const fetchSeasonalAnimeFast = async (year: number, season: string, inclu
      const response = await fetchSeasonalAnime(year, season, 1, Math.max(limit, 20), includeNsfw)
 
      // Take only the requested limit and sort by popularity/score
-     let anime = response.data.slice(0, limit)
+     const anime = response.data.slice(0, limit)
 
      // Sort by popularity first, then by score
-     return anime.sort((a, b) => {
-       // If both have popularity, sort by that
-       if (a.popularity !== undefined && b.popularity !== undefined) {
-         return a.popularity - b.popularity
-       }
-
-       // If only one has popularity, it comes first
-       if (a.popularity !== undefined) return -1
-       if (b.popularity !== undefined) return 1
-
-       // If neither has popularity, sort by score (descending)
-       const scoreA = a.score || 0
-       const scoreB = b.score || 0
-       return scoreB - scoreA
-     })
+     return sortAnimeByPopularityAndScore(anime)
    } catch (error) {
-     console.error(`Error fetching fast seasonal anime for ${year} ${season}:`, error)
      throw error
    }
  }
@@ -377,7 +402,11 @@ export const fetchSeasonalAnimeForLanding = async (year: number, season: string,
  }
 
 export const fetchAnimeById = (id: number): Promise<{ data: AnimeData }> => {
-  return fetchFromApi(`anime/${id}`, `anime_${id}`)
+   return fetchFromApi(`anime/${id}`, `anime_${id}`)
+}
+
+export const fetchAnimeCharacters = async (id: number): Promise<{ data: CharacterData[] }> => {
+   return await fetchFromApi<{ data: CharacterData[] }>(`anime/${id}/characters`, `anime_characters_${id}`);
 }
 
 // Image optimization utilities
@@ -567,4 +596,57 @@ export const setCustomRequestDelay = (delayMs: number): void => {
   // Allow customization of request delay for different environments
   // This is a global change that affects all API calls
   (global as any).CUSTOM_REQUEST_DELAY = delayMs
+}
+
+// Schedule API functions
+export const fetchAnimeSchedule = async (day?: string, includeNsfw = false): Promise<AnimeResponse> => {
+  let url = 'schedules'
+
+  // If day is specified, fetch schedule for that specific day
+  if (day) {
+    url += `?filter=${day}`
+  }
+
+  const response = await fetchFromApi<AnimeResponse>(url, `schedule_${day || 'all'}`)
+  if (!includeNsfw) {
+    response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
+  }
+  return response
+}
+
+// Get anime airing on the next day based on current date
+export const fetchNextDayAnime = async (includeNsfw = false): Promise<AnimeData[]> => {
+  const now = new Date()
+  // Get tomorrow's date
+  const tomorrow = new Date(now)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  // Get day name in lowercase (monday, tuesday, etc.)
+  const dayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+
+  try {
+    const response = await fetchAnimeSchedule(dayName, includeNsfw)
+    return response.data
+  } catch (error) {
+    return []
+  }
+}
+
+// Helper function to get current season information
+export const getCurrentSeasonInfo = (): { year: number; season: string; displayName: string } => {
+  const now = new Date()
+  const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11
+  const currentYear = now.getFullYear()
+
+  let season: string
+  if (currentMonth >= 3 && currentMonth <= 5) season = 'spring'
+  else if (currentMonth >= 6 && currentMonth <= 8) season = 'summer'
+  else if (currentMonth >= 9 && currentMonth <= 11) season = 'fall'
+  else season = 'winter'
+
+  return {
+    year: currentYear,
+    season: season,
+    displayName: season.charAt(0).toUpperCase() + season.slice(1)
+  }
 }

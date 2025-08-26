@@ -81,7 +81,6 @@ const TrendingPage = () => {
       }
     } catch (err) {
       setError('Failed to load seasonal anime. Please try again.')
-      console.error('Error fetching seasonal anime:', err)
     } finally {
       setLoading(false)
       setIsPageLoading(false)
@@ -175,6 +174,235 @@ const TrendingPage = () => {
     return pages
   }
 
+  // Full-page loading screen
+  if (loading && isInitialLoad) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: '#0f172a',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          flexDirection: 'column'
+        }}
+      >
+        {/* Animated background elements */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              position: 'absolute',
+              top: '25%',
+              left: '8%',
+              width: '45px',
+              height: '45px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderRadius: '50%',
+              animation: 'float 3.5s ease-in-out infinite'
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: '55%',
+              right: '18%',
+              width: '55px',
+              height: '55px',
+              backgroundColor: 'rgba(139, 92, 246, 0.1)',
+              borderRadius: '50%',
+              animation: 'float 4.5s ease-in-out infinite reverse'
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '35%',
+              left: '15%',
+              width: '35px',
+              height: '35px',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              borderRadius: '50%',
+              animation: 'float 3s ease-in-out infinite'
+            }}
+          />
+        </div>
+
+        {/* Main loading content */}
+        <div
+          style={{
+            backgroundColor: 'rgba(30, 41, 59, 0.9)',
+            padding: '48px',
+            borderRadius: '24px',
+            border: '1px solid rgba(51, 65, 85, 0.5)',
+            textAlign: 'center',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+            animation: 'slideInUp 0.8s ease-out',
+            position: 'relative',
+            zIndex: 1
+          }}
+        >
+          <div style={{ marginBottom: '24px' }}>
+            <TrendingUp size={48} style={{ color: '#3b82f6', animation: 'pulse 2s ease-in-out infinite' }} />
+          </div>
+
+          <h2 style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: 'white',
+            marginBottom: '8px',
+            animation: 'fadeIn 1s ease-out'
+          }}>
+            Loading {currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1)} {currentYear} Anime
+          </h2>
+
+          <p style={{
+            color: '#cbd5e1',
+            fontSize: '0.875rem',
+            animation: 'fadeIn 1s ease-out 0.2s both'
+          }}>
+            Discovering the latest seasonal releases...
+          </p>
+
+          {/* Wave loading animation */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginTop: '24px',
+            gap: '4px'
+          }}>
+            <div style={{
+              width: '6px',
+              height: '20px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '3px',
+              animation: 'wave 1.2s ease-in-out infinite'
+            }} />
+            <div style={{
+              width: '6px',
+              height: '20px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '3px',
+              animation: 'wave 1.2s ease-in-out infinite 0.1s'
+            }} />
+            <div style={{
+              width: '6px',
+              height: '20px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '3px',
+              animation: 'wave 1.2s ease-in-out infinite 0.2s'
+            }} />
+            <div style={{
+              width: '6px',
+              height: '20px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '3px',
+              animation: 'wave 1.2s ease-in-out infinite 0.3s'
+            }} />
+            <div style={{
+              width: '6px',
+              height: '20px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '3px',
+              animation: 'wave 1.2s ease-in-out infinite 0.4s'
+            }} />
+          </div>
+
+          {/* Progress indicator */}
+          <div style={{
+            marginTop: '20px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'scalePulse 1.5s ease-in-out infinite'
+            }} />
+            <div style={{
+              width: '8px',
+              height: '8px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'scalePulse 1.5s ease-in-out infinite 0.2s'
+            }} />
+            <div style={{
+              width: '8px',
+              height: '8px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'scalePulse 1.5s ease-in-out infinite 0.4s'
+            }} />
+          </div>
+        </div>
+
+        <style jsx global>{`
+          @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-25px) rotate(180deg); }
+          }
+
+          @keyframes slideInUp {
+            from {
+              opacity: 0;
+              transform: translateY(30px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+
+          @keyframes pulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 1;
+            }
+            50% {
+              transform: scale(1.1);
+              opacity: 0.8;
+            }
+          }
+
+          @keyframes wave {
+            0%, 60%, 100% {
+              transform: scaleY(1);
+            }
+            30% {
+              transform: scaleY(1.8);
+            }
+          }
+
+          @keyframes scalePulse {
+            0%, 100% {
+              transform: scale(1);
+              opacity: 0.6;
+            }
+            50% {
+              transform: scale(1.3);
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </div>
+    )
+  }
+
   return (
     <>
       <Header />
@@ -182,8 +410,6 @@ const TrendingPage = () => {
         style={{
           backgroundColor: '#0f172a',
           minHeight: '100vh',
-          opacity: isInitialLoad ? 0 : 1,
-          animation: isInitialLoad ? 'none' : 'fadeInUp 0.6s ease-out',
           paddingTop: '5rem'
         }}
       >

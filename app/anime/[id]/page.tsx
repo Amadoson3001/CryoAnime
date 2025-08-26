@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
+import { fetchAnimeById, fetchAnimeCharacters, AnimeData, CharacterData, getImageUrl, formatScore, formatDate } from '@/lib/api'
+import { ArrowLeft, Star, Calendar, Clock, PlayCircle, Info, Heart, Share2, ChevronDown, ChevronUp, Users } from 'lucide-react'
+import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { fetchAnimeById, AnimeData, getImageUrl, formatScore, formatDate } from '@/lib/api'
-import { ArrowLeft, Star, Calendar, Clock, PlayCircle, Info, Heart, Share2 } from 'lucide-react'
-import Link from 'next/link'
+import CharacterCard from '@/components/CharacterCard'
 import {
     Box,
     Container,
@@ -23,9 +24,24 @@ const AnimeDetailsPage = () => {
     const params = useParams()
     const id = params.id as string
 
+    // All hooks must be called before any conditional returns
     const [anime, setAnime] = useState<AnimeData | null>(null)
+    const [characters, setCharacters] = useState<CharacterData[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [synopsisExpanded, setSynopsisExpanded] = useState(false)
+    const [isClient, setIsClient] = useState(false)
+
+    // Utility function to truncate text
+    const truncateText = (text: string, maxLength: number = 300) => {
+        if (text.length <= maxLength) return text
+        return text.substring(0, maxLength).trim() + '...'
+    }
+
+    // Ensure component only renders on client
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     useEffect(() => {
         const loadAnimeDetails = async () => {
@@ -36,9 +52,21 @@ const AnimeDetailsPage = () => {
                 setError(null)
                 const response = await fetchAnimeById(parseInt(id))
                 setAnime(response.data)
+
+                // Fetch characters separately
+                try {
+                    const charactersResponse = await fetchAnimeCharacters(parseInt(id));
+
+                    if (charactersResponse.data && charactersResponse.data.length > 0) {
+                        setCharacters(charactersResponse.data.slice(0, 12)); // Limit to 12 characters
+                    } else {
+                        setCharacters([]);
+                    }
+                } catch (charErr) {
+                    setCharacters([]); // Set empty array if character fetch fails
+                }
             } catch (err) {
                 setError('Failed to load anime details. Please try again.')
-                console.error('Error loading anime details:', err)
             } finally {
                 setLoading(false)
             }
@@ -47,56 +75,208 @@ const AnimeDetailsPage = () => {
         loadAnimeDetails()
     }, [id])
 
+    // Don't render anything until we're on the client
+    if (!isClient) {
+        return (
+            <div style={{ backgroundColor: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Skeleton width="200px" height="24px" />
+            </div>
+        )
+    }
+
     if (loading) {
         return (
-            <>
-                <Header />
-                <main style={{ backgroundColor: '#0f172a', minHeight: '100vh' }}>
-                    <Container size="4" px="4" py="8">
-                        <Box mb="6">
-                            <Button variant="ghost" asChild>
-                                <Link href="/" style={{ color: '#3b82f6' }}>
-                                    <ArrowLeft size={20} />
-                                    Back to Home
-                                </Link>
-                            </Button>
-                        </Box>
+            <div
+                style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: '#0f172a',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 9999,
+                    flexDirection: 'column'
+                }}
+            >
+                {/* Animated background elements */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '15%',
+                            left: '10%',
+                            width: '50px',
+                            height: '50px',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 3s ease-in-out infinite'
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: '70%',
+                            right: '12%',
+                            width: '35px',
+                            height: '35px',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 4s ease-in-out infinite reverse'
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '25%',
+                            left: '25%',
+                            width: '25px',
+                            height: '25px',
+                            backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                            borderRadius: '50%',
+                            animation: 'float 2.5s ease-in-out infinite'
+                        }}
+                    />
+                </div>
 
-                        {/* Loading skeleton */}
-                        <Flex gap="8" direction={{ initial: 'column', md: 'row' }}>
-                            {/* Image skeleton */}
-                            <Box style={{ flex: '0 0 300px' }}>
-                                <Skeleton width="300px" height="450px" style={{ borderRadius: 'var(--radius-3)' }} />
-                            </Box>
+                {/* Main loading content */}
+                <div
+                    style={{
+                        backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                        padding: '48px',
+                        borderRadius: '24px',
+                        border: '1px solid rgba(51, 65, 85, 0.5)',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+                        animation: 'slideInUp 0.8s ease-out',
+                        position: 'relative',
+                        zIndex: 1
+                    }}
+                >
+                    <div style={{ marginBottom: '24px' }}>
+                        <PlayCircle size={48} style={{ color: '#10b981', animation: 'bounce 1.5s ease-in-out infinite' }} />
+                    </div>
 
-                            {/* Content skeleton */}
-                            <Box style={{ flex: 1 }}>
-                                <Skeleton width="60%" height="32px" mb="4" />
-                                <Skeleton width="40%" height="24px" mb="6" />
+                    <h2 style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 'bold',
+                        color: 'white',
+                        marginBottom: '8px',
+                        animation: 'fadeIn 1s ease-out'
+                    }}>
+                        Loading Anime Details
+                    </h2>
 
-                                <Flex gap="4" mb="6">
-                                    <Skeleton width="80px" height="32px" />
-                                    <Skeleton width="80px" height="32px" />
-                                    <Skeleton width="80px" height="32px" />
-                                </Flex>
+                    <p style={{
+                        color: '#cbd5e1',
+                        fontSize: '0.875rem',
+                        animation: 'fadeIn 1s ease-out 0.2s both'
+                    }}>
+                        Fetching detailed information and characters...
+                    </p>
 
-                                <Skeleton width="100%" height="120px" mb="6" />
+                    {/* Loading spinner */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginTop: '24px'
+                    }}>
+                        <div style={{
+                            width: '40px',
+                            height: '40px',
+                            border: '3px solid rgba(51, 65, 85, 0.3)',
+                            borderTop: '3px solid #10b981',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite'
+                        }} />
+                    </div>
 
-                                <Flex gap="4" mb="4">
-                                    <Skeleton width="100px" height="20px" />
-                                    <Skeleton width="100px" height="20px" />
-                                    <Skeleton width="100px" height="20px" />
-                                </Flex>
+                    {/* Pulsing dots */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        marginTop: '20px'
+                    }}>
+                        <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#10b981',
+                            borderRadius: '50%',
+                            animation: 'pulse 1.4s ease-in-out infinite'
+                        }} />
+                        <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#10b981',
+                            borderRadius: '50%',
+                            animation: 'pulse 1.4s ease-in-out infinite 0.2s'
+                        }} />
+                        <div style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#10b981',
+                            borderRadius: '50%',
+                            animation: 'pulse 1.4s ease-in-out infinite 0.4s'
+                        }} />
+                    </div>
+                </div>
 
-                                <Skeleton width="150px" height="20px" mb="6" />
+                <style jsx global>{`
+                    @keyframes float {
+                        0%, 100% { transform: translateY(0px) rotate(0deg); }
+                        50% { transform: translateY(-20px) rotate(180deg); }
+                    }
 
-                                <Skeleton width="100%" height="200px" />
-                            </Box>
-                        </Flex>
-                    </Container>
-                </main>
-                <Footer />
-            </>
+                    @keyframes slideInUp {
+                        from {
+                            opacity: 0;
+                            transform: translateY(30px);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translateY(0);
+                        }
+                    }
+
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+
+                    @keyframes spin {
+                        from { transform: rotate(0deg); }
+                        to { transform: rotate(360deg); }
+                    }
+
+                    @keyframes bounce {
+                        0%, 20%, 50%, 80%, 100% {
+                            transform: translateY(0);
+                        }
+                        40% {
+                            transform: translateY(-10px);
+                        }
+                        60% {
+                            transform: translateY(-5px);
+                        }
+                    }
+
+                    @keyframes pulse {
+                        0%, 80%, 100% {
+                            opacity: 0.3;
+                            transform: scale(1);
+                        }
+                        40% {
+                            opacity: 1;
+                            transform: scale(1.2);
+                        }
+                    }
+                `}</style>
+            </div>
         )
     }
 
@@ -177,6 +357,7 @@ const AnimeDetailsPage = () => {
                                     style={{
                                         width: '100%',
                                         height: 'auto',
+                                        aspectRatio: '300/450',
                                         objectFit: 'cover'
                                     }}
                                 />
@@ -261,9 +442,50 @@ const AnimeDetailsPage = () => {
                                 <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.75rem', color: 'white' }}>
                                     Synopsis
                                 </div>
-                                <Text as="p" size="3" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
-                                    {anime.synopsis || 'No synopsis available.'}
-                                </Text>
+                                <div style={{ position: 'relative' }}>
+                                    <Text
+                                        as="p"
+                                        size="3"
+                                        style={{
+                                            color: '#cbd5e1',
+                                            lineHeight: '1.6',
+                                            marginBottom: anime.synopsis && anime.synopsis.length > 300 ? '1rem' : '0'
+                                        }}
+                                    >
+                                        {anime.synopsis
+                                            ? (synopsisExpanded ? anime.synopsis : truncateText(anime.synopsis))
+                                            : 'No synopsis available.'
+                                        }
+                                    </Text>
+                                    {anime.synopsis && anime.synopsis.length > 300 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="2"
+                                            onClick={() => setSynopsisExpanded(!synopsisExpanded)}
+                                            style={{
+                                                color: '#3b82f6',
+                                                padding: '0.25rem 0.5rem',
+                                                fontSize: '0.875rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.25rem',
+                                                marginTop: '0.5rem'
+                                            }}
+                                        >
+                                            {synopsisExpanded ? (
+                                                <>
+                                                    <ChevronUp size={14} />
+                                                    Show Less
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ChevronDown size={14} />
+                                                    Read More
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
                             </Box>
 
                             <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
@@ -271,94 +493,244 @@ const AnimeDetailsPage = () => {
                             {/* Additional Information */}
                             <Box mb="6">
                                 <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>
-                                    Information
+                                    Statistics & Information
                                 </div>
 
-                                <Grid columns="2" gap="4">
-                                    {anime.aired?.from && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Aired
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                {formatDate(anime.aired.from)}
-                                                {anime.aired.to && ` to ${formatDate(anime.aired.to)}`}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                <Grid columns={{ initial: '1', sm: '2', lg: '3' }} gap="6">
+                                    {/* Basic Info */}
+                                    <Box>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
+                                            Basic Information
+                                        </div>
+                                        <Flex direction="column" gap="3">
+                                            {anime.aired?.from && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Aired
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {formatDate(anime.aired.from)}
+                                                        {anime.aired.to && ` to ${formatDate(anime.aired.to)}`}
+                                                    </Text>
+                                                </Box>
+                                            )}
 
-                                    {anime.duration && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Duration
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                {anime.duration}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                            {anime.duration && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Duration
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {anime.duration}
+                                                    </Text>
+                                                </Box>
+                                            )}
 
-                                    {anime.season && anime.year && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Season
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                {anime.season} {anime.year}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                            {anime.season && anime.year && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Season
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {anime.season} {anime.year}
+                                                    </Text>
+                                                </Box>
+                                            )}
 
-                                    {anime.rating && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Rating
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                {anime.rating}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                            {anime.rating && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Rating
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {anime.rating}
+                                                    </Text>
+                                                </Box>
+                                            )}
+                                        </Flex>
+                                    </Box>
 
-                                    {anime.rank && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Rank
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                #{anime.rank}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                    {/* Rankings & Stats */}
+                                    <Box>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
+                                            Rankings & Popularity
+                                        </div>
+                                        <Flex direction="column" gap="3">
+                                            {anime.rank && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Rank
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: '#fbbf24', fontWeight: 'bold' }}>
+                                                        #{anime.rank}
+                                                    </Text>
+                                                </Box>
+                                            )}
 
-                                    {anime.popularity && (
-                                        <Box>
-                                            <Text as="p" size="2" mb="1" style={{ color: '#94a3b8' }}>
-                                                Popularity
-                                            </Text>
-                                            <Text as="p" size="3" style={{ color: 'white' }}>
-                                                #{anime.popularity}
-                                            </Text>
-                                        </Box>
-                                    )}
+                                            {anime.popularity && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Popularity
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: '#3b82f6', fontWeight: 'bold' }}>
+                                                        #{anime.popularity}
+                                                    </Text>
+                                                </Box>
+                                            )}
+
+                                            {anime.score && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Score
+                                                    </Text>
+                                                    <Flex align="center" gap="2">
+                                                        <Star size={16} style={{ color: '#fbbf24' }} />
+                                                        <Text as="p" size="3" style={{ color: 'white', fontWeight: 'bold' }}>
+                                                            {formatScore(anime.score)}
+                                                        </Text>
+                                                        {anime.scored_by && (
+                                                            <Text as="p" size="2" style={{ color: '#64748b' }}>
+                                                                ({anime.scored_by.toLocaleString()} users)
+                                                            </Text>
+                                                        )}
+                                                    </Flex>
+                                                </Box>
+                                            )}
+
+                                            {anime.members && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Members
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {anime.members.toLocaleString()}
+                                                    </Text>
+                                                </Box>
+                                            )}
+
+                                            {typeof anime.favorites === 'number' && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Favorites
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: '#ef4444' }}>
+                                                        {anime.favorites.toLocaleString()} ♥
+                                                    </Text>
+                                                </Box>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Episode Info */}
+                                    <Box>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
+                                            Episode Information
+                                        </div>
+                                        <Flex direction="column" gap="3">
+                                            {anime.episodes && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                        Episodes
+                                                    </Text>
+                                                    <Text as="p" size="3" style={{ color: 'white', fontWeight: 'bold' }}>
+                                                        {anime.episodes}
+                                                    </Text>
+                                                </Box>
+                                            )}
+
+                                            <Box>
+                                                <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                    Status
+                                                </Text>
+                                                <Badge
+                                                    variant="soft"
+                                                    style={{
+                                                        backgroundColor: anime.status === 'Finished Airing' ? '#10b981' :
+                                                            anime.status === 'Currently Airing' ? '#3b82f6' : '#f59e0b',
+                                                        color: 'white',
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                >
+                                                    {anime.status}
+                                                </Badge>
+                                            </Box>
+
+                                            <Box>
+                                                <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>
+                                                    Type
+                                                </Text>
+                                                <Badge
+                                                    variant="soft"
+                                                    style={{
+                                                        backgroundColor: '#1e293b',
+                                                        color: '#3b82f6',
+                                                        fontSize: '0.75rem'
+                                                    }}
+                                                >
+                                                    {anime.type}
+                                                </Badge>
+                                            </Box>
+                                        </Flex>
+                                    </Box>
                                 </Grid>
                             </Box>
 
-                            {/* Genres */}
-                            {anime.genres && anime.genres.length > 0 && (
-                                <Box mb="6">
-                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '0.75rem', color: 'white' }}>
-                                        Genres
-                                    </div>
-                                    <Flex gap="2" wrap="wrap">
-                                        {anime.genres.map((genre) => (
-                                            <Badge key={genre.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6' }}>
-                                                {genre.name}
-                                            </Badge>
-                                        ))}
-                                    </Flex>
-                                </Box>
-                            )}
+                            {/* Genres, Themes, and Demographics */}
+                            <Box mb="6">
+                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>
+                                    Categories
+                                </div>
+
+                                <Flex gap="6" direction={{ initial: 'column', md: 'row' }}>
+                                    {/* Genres */}
+                                    {anime.genres && anime.genres.length > 0 && (
+                                        <Box style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#94a3b8' }}>
+                                                Genres
+                                            </div>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.genres.map((genre) => (
+                                                    <Badge key={genre.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6', fontSize: '0.75rem' }}>
+                                                        {genre.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+
+                                    {/* Themes */}
+                                    {anime.themes && anime.themes.length > 0 && (
+                                        <Box style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#94a3b8' }}>
+                                                Themes
+                                            </div>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.themes.map((theme) => (
+                                                    <Badge key={theme.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#10b981', fontSize: '0.75rem' }}>
+                                                        {theme.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+
+                                    {/* Demographics */}
+                                    {anime.demographics && anime.demographics.length > 0 && (
+                                        <Box style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#94a3b8' }}>
+                                                Demographics
+                                            </div>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.demographics.map((demo) => (
+                                                    <Badge key={demo.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#f59e0b', fontSize: '0.75rem' }}>
+                                                        {demo.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+                                </Flex>
+                            </Box>
 
                             {/* Studios */}
                             {anime.studios && anime.studios.length > 0 && (
@@ -373,6 +745,30 @@ const AnimeDetailsPage = () => {
                                             </Badge>
                                         ))}
                                     </Flex>
+                                </Box>
+                            )}
+
+                            {/* Characters */}
+                            {characters && characters.length > 0 && (
+                                <Box mb="6">
+                                    <Flex align="center" gap="2" mb="6">
+                                        <Users size={20} style={{ color: '#3b82f6' }} />
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white' }}>
+                                            Characters ({characters.length})
+                                        </div>
+                                    </Flex>
+                                    <Grid columns={{ initial: '2', sm: '3', md: '4', lg: '4' }} gap="4">
+                                        {characters.slice(0, 8).map((character, index) => (
+                                            <CharacterCard key={`char_${index}`} character={character} />
+                                        ))}
+                                    </Grid>
+                                    {characters.length > 8 && (
+                                        <Box style={{ textAlign: 'center', marginTop: 'var(--space-6)' }}>
+                                            <Text size="3" style={{ color: '#94a3b8' }}>
+                                                And {characters.length - 8} more characters...
+                                            </Text>
+                                        </Box>
+                                    )}
                                 </Box>
                             )}
                         </Box>

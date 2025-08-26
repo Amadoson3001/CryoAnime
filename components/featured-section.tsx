@@ -77,7 +77,6 @@ const FeaturedSection = () => {
         setError('Failed to load featured anime. Please try again later.')
         // Log error details only in development
         if (process.env.NODE_ENV === 'development') {
-          console.error('Error loading featured anime:', err)
         }
       } finally {
         setLoading(false)
@@ -128,8 +127,8 @@ const FeaturedSection = () => {
                   {section.title}
                 </Text>
               </Flex>
-              <Link 
-                href={section.title === 'Top Rated Anime' ? '/top-rated' : '/trending'} 
+              <Link
+                href={section.title === 'Top Rated Anime' ? '/top-rated' : '/trending'}
                 passHref
               >
                 <Button variant="ghost" size="2" style={{ color: '#3b82f6' }}>
@@ -175,16 +174,18 @@ const FeaturedSection = () => {
             <Text as="p" size="4" mb="6" style={{ color: '#cbd5e1' }}>
               Join thousands of anime fans and discover your next favorite series.
             </Text>
-            <Button
-              size="3"
-              style={{
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                fontWeight: 'bold'
-              }}
-            >
-              Browse All Anime
-            </Button>
+            <Link href="/Explore" passHref>
+              <Button
+                size="3"
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}
+              >
+                Browse All Anime
+              </Button>
+            </Link>
           </Box>
         </Box>
       </Container>

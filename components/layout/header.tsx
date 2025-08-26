@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Menu, X, Home, Star, TrendingUp, Heart, Shield } from 'lucide-react'
+import { Search, Menu, X, Home, Star, TrendingUp, Heart, Shield, Calendar } from 'lucide-react'
 import {
   Box,
   Flex,
@@ -51,6 +51,18 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Close mobile menu when screen width changes to desktop size
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768 && isMenuOpen) { // 768px is the md breakpoint
+        setIsMenuOpen(false)
+      }
+    }
+    
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isMenuOpen])
+
   // Initialize NSFW preference
   useEffect(() => {
     setIsNsfwEnabled(getNsfwPreference())
@@ -83,7 +95,6 @@ const Header = () => {
       setShowSuggestions(true)
     } catch (err) {
       setSearchError('Failed to search anime')
-      console.error('Error searching anime:', err)
     } finally {
       setSearchLoading(false)
     }
@@ -121,15 +132,17 @@ const Header = () => {
   const navigationItems = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/trending', label: 'Trending', icon: TrendingUp },
-    { href: '/favorites', label: 'Favorites', icon: Heart },
-    { href: '/top-rated', label: 'Top Rated', icon: Star }
+    { href: '/movies', label: 'Movies', icon: Heart },
+    { href: '/top-rated', label: 'Top Rated', icon: Star },
+    { href: '/schedule', label: 'Schedule', icon: Calendar }
   ]
 
   return (
     <Box
       style={{
-        backgroundColor: 'rgba(15, 23, 42, 0.7)',
-        backdropFilter: isScrolled ? 'blur(10px)' : 'blur(10px)',
+        backgroundColor: isMenuOpen ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         boxShadow: isScrolled
           ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
           : 'none',
@@ -139,7 +152,6 @@ const Header = () => {
         right: 0,
         zIndex: 1000,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        WebkitBackdropFilter: isScrolled ? 'blur(10px)' : 'none',
         overflow: 'visible'
       }}
       py={{ initial: "4", sm: "3" }}
@@ -237,7 +249,7 @@ const Header = () => {
                           left: dropdownPosition.left,
                           transform: typeof dropdownPosition.left === 'number' ? 'translateX(-50%)' : 'translateX(-50%)',
                           zIndex: 9999,
-                          maxHeight: 'calc(100vh - 90px)',
+                          maxHeight: '400px',
                           overflow: 'auto',
                           boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
                           borderRadius: '12px',
@@ -340,110 +352,114 @@ const Header = () => {
       </Container>
 
       {/* Mobile menu */}
-      <Box
-        display={{ initial: isMenuOpen ? 'block' : 'none', md: 'none' }}
-        style={{
-          backgroundColor: 'rgba(30, 41, 59, 0.2)',
-          borderTop: '1px solid #1e293b',
-          maxHeight: isMenuOpen ? '400px' : '0',
-          overflow: 'hidden',
-          transition: 'max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          backdropFilter: 'none',
-          WebkitBackdropFilter: 'none',
-          position: 'relative',
-          zIndex: 40
-        }}
-        py={{ initial: "3", sm: "4" }}
-      >
-        <Container size="4" px="4">
-          {/* Mobile navigation links */}
-          <Flex direction="column" gap="2" mb="4">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{ textDecoration: 'none' }}
-              >
-                <Flex
-                  align="center"
-                  gap="3"
-                  style={{
-                    color: '#94a3b8',
-                    padding: '14px 16px',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s ease',
-                    border: '1px solid transparent',
-                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                    backdropFilter: 'none',
-                    WebkitBackdropFilter: 'none'
-                  }}
-                  className="mobile-nav-link"
-                  onClick={() => setIsMenuOpen(false)}
+      {isMenuOpen && (
+        <Box
+          style={{
+            position: 'fixed',
+            top: '3.5rem',
+            left: 0,
+            right: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 999,
+            maxHeight: '100vh',
+            overflow: 'auto'
+          }}
+          py={{ initial: "3", sm: "4" }}
+        >
+          <Container size="4" px="4">
+            {/* Mobile navigation links */}
+            <Flex direction="column" gap="2" mb="4">
+              {navigationItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  style={{ textDecoration: 'none' }}
                 >
-                  <item.icon size={20} />
-                  <span style={{ fontSize: '16px', fontWeight: '500' }}>
-                    {item.label}
-                  </span>
-                </Flex>
-              </Link>
-            ))}
-          </Flex>
+                  <Flex
+                    align="center"
+                    gap="3"
+                    style={{
+                      color: '#94a3b8',
+                      padding: '14px 16px',
+                      borderRadius: '8px',
+                      transition: 'all 0.2s ease',
+                      border: '1px solid transparent',
+                      backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                      backdropFilter: 'none',
+                      WebkitBackdropFilter: 'none'
+                    }}
+                    className="mobile-nav-link"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <item.icon size={20} />
+                    <span style={{ fontSize: '16px', fontWeight: '500' }}>
+                      {item.label}
+                    </span>
+                  </Flex>
+                </Link>
+              ))}
+            </Flex>
 
-          {/* Mobile search */}
-          <form onSubmit={handleSearch}>
-            <TextField.Root
-              placeholder="Search anime..."
-              value={searchQuery}
-              onChange={(e) => handleSearchInputChange(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch(e as any)
-                }
-              }}
-              style={{
-                width: '100%',
-                backgroundColor: 'rgba(30, 41, 59, 0.8)',
-                border: '1px solid #1e293b',
-                borderRadius: '8px'
-              }}
-              className="mobile-search"
-            >
-              <TextField.Slot
-                side="left"
-                style={{ cursor: 'pointer' }}
-                onClick={handleSearch}
+            {/* Mobile search */}
+            <form onSubmit={handleSearch}>
+              <TextField.Root
+                placeholder="Search anime..."
+                value={searchQuery}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch(e as any)
+                  }
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                  border: '1px solid #1e293b',
+                  borderRadius: '8px'
+                }}
+                className="mobile-search"
               >
-                <Search size={20} style={{ color: '#94a3b8' }} />
-              </TextField.Slot>
-            </TextField.Root>
-          </form>
+                <TextField.Slot
+                  side="left"
+                  style={{ cursor: 'pointer' }}
+                  onClick={handleSearch}
+                >
+                  <Search size={20} style={{ color: '#94a3b8' }} />
+                </TextField.Slot>
+              </TextField.Root>
+            </form>
 
-          {/* NSFW Toggle for Mobile */}
-          <Flex align="center" justify="center" mt="4">
-            <Button
-              variant="ghost"
-              onClick={toggleNsfw}
-              style={{
-                color: isNsfwEnabled ? '#ef4444' : '#94a3b8',
-                border: isNsfwEnabled ? '1px solid #ef4444' : '1px solid #334155',
-                backgroundColor: isNsfwEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(30, 41, 59, 0.9)',
-                width: '100%',
-                justifyContent: 'center',
-                transition: 'all 0.3s ease',
-                transform: isNsfwEnabled ? 'scale(1.02)' : 'scale(1)',
-                boxShadow: isNsfwEnabled ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
-              }}
-              className="mobile-nsfw-toggle-btn"
-              title={isNsfwEnabled ? 'Tap to hide NSFW content' : 'Tap to show NSFW content'}
-            >
-              <Flex align="center" gap="2">
-                <Shield size={20} />
-                <span>{isNsfwEnabled ? 'Hide NSFW Content' : 'Show NSFW Content'}</span>
-              </Flex>
-            </Button>
-          </Flex>
-        </Container>
-      </Box>
+            {/* NSFW Toggle for Mobile */}
+            <Flex align="center" justify="center" mt="4">
+              <Button
+                variant="ghost"
+                onClick={toggleNsfw}
+                style={{
+                  color: isNsfwEnabled ? '#ef4444' : '#94a3b8',
+                  border: isNsfwEnabled ? '1px solid #ef4444' : '1px solid #334155',
+                  backgroundColor: isNsfwEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(30, 41, 59, 0.9)',
+                  width: '100%',
+                  justifyContent: 'center',
+                  transition: 'all 0.3s ease',
+                  transform: isNsfwEnabled ? 'scale(1.02)' : 'scale(1)',
+                  boxShadow: isNsfwEnabled ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
+                }}
+                className="mobile-nsfw-toggle-btn"
+                title={isNsfwEnabled ? 'Tap to hide NSFW content' : 'Tap to show NSFW content'}
+              >
+                <Flex align="center" gap="2">
+                  <Shield size={20} />
+                  <span>{isNsfwEnabled ? 'Hide NSFW Content' : 'Show NSFW Content'}</span>
+                </Flex>
+              </Button>
+            </Flex>
+          </Container>
+        </Box>
+      )}
     </Box>
   )
 }

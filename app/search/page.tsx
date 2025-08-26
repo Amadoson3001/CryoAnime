@@ -31,6 +31,7 @@ const SearchContent = () => {
 
   useEffect(() => {
     if (initialQuery) {
+      setQuery(initialQuery)
       performSearch(initialQuery, 1)
     }
   }, [initialQuery])
@@ -52,7 +53,6 @@ const SearchContent = () => {
       setCurrentPage(page)
     } catch (err) {
       setError('Failed to search anime. Please try again.')
-      console.error('Error searching anime:', err)
     } finally {
       setLoading(false)
     }
@@ -60,7 +60,12 @@ const SearchContent = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    performSearch(query)
+    if (query.trim()) {
+      // Update URL with search query
+      const newUrl = `/search?q=${encodeURIComponent(query)}`
+      window.history.pushState({}, '', newUrl)
+      performSearch(query)
+    }
   }
 
   const loadMore = () => {
@@ -77,33 +82,35 @@ const SearchContent = () => {
           </Text>
 
           {/* Search Form */}
-          <Flex gap="4" mb="6" onSubmit={handleSearch}>
-            <Box flexGrow="1">
-              <TextField.Root
-                placeholder="Search for anime..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch(e as any)
-                  }
-                }}
-                style={{ width: '100%' }}
-              >
-                <TextField.Slot
-                  side="left"
-                  style={{ cursor: 'pointer' }}
-                  onClick={handleSearch}
+          <form onSubmit={handleSearch}>
+            <Flex gap="4" mb="6">
+              <Box flexGrow="1">
+                <TextField.Root
+                  placeholder="Search for anime..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearch(e as any)
+                    }
+                  }}
+                  style={{ width: '100%' }}
                 >
-                  <Search size={20} style={{ color: '#94a3b8' }} />
-                </TextField.Slot>
-              </TextField.Root>
-            </Box>
-            <Button type="submit" style={{ backgroundColor: '#3b82f6', color: 'white' }}>
-              <Search size={20} />
-              Search
-            </Button>
-          </Flex>
+                  <TextField.Slot
+                    side="left"
+                    style={{ cursor: 'pointer' }}
+                    onClick={handleSearch}
+                  >
+                    <Search size={20} style={{ color: '#94a3b8' }} />
+                  </TextField.Slot>
+                </TextField.Root>
+              </Box>
+              <Button type="submit" style={{ backgroundColor: '#3b82f6', color: 'white' }}>
+                <Search size={20} />
+                Search
+              </Button>
+            </Flex>
+          </form>
 
           {/* Search Stats */}
           {query && !loading && !error && (

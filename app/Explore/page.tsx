@@ -43,7 +43,6 @@ const GenresPage = () => {
         setGenres(response.data)
       } catch (err) {
         setError('Failed to load genres. Please try again.')
-        console.error('Error fetching genres:', err)
       } finally {
         setLoading(false)
       }
@@ -67,7 +66,6 @@ const GenresPage = () => {
       setCurrentPage(page)
     } catch (err) {
       setAnimeError('Failed to load anime for this genre. Please try again.')
-      console.error('Error fetching anime by genre:', err)
     } finally {
       setAnimeLoading(false)
     }

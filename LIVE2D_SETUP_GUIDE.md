@@ -49,8 +49,6 @@ import Live2dWaifu from '@/components/live2d-waifu';
     showToolMenu: false,
     showHitAreaFrames: false
   }}
-  onLoad={() => console.log('Live2D loaded successfully')}
-  onError={(error) => console.error('Live2D error:', error)}
 />
 ```
 
