@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, memo } from 'react';
 
 interface Live2DModel {
     jsonPath: string;
@@ -350,4 +350,9 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
     return null;
 };
 
-export default Live2dWaifu;
+// Memoize the component to prevent unnecessary re-renders
+export default memo(Live2dWaifu, (prevProps, nextProps) => {
+    // Custom comparison function to check if props have changed
+    // Since settings is an object, we need to do a deep comparison
+    return JSON.stringify(prevProps.settings) === JSON.stringify(nextProps.settings);
+});

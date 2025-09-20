@@ -1,6 +1,9 @@
 // Jikan API service for fetching anime data
 const JIKAN_API_BASE = 'https://api.jikan.moe/v4'
 
+// Request deduplication map to prevent concurrent requests for the same endpoint
+const pendingRequests = new Map<string, Promise<any>>();
+
 // Types for API responses
 export interface AnimeData {
   mal_id: number
@@ -121,15 +124,24 @@ export interface AnimeResponse {
 
 export type ImageSize = 'small' | 'medium' | 'large';
 
+// Import cache utilities
+import { getCache, setCache } from './cache'
+
 // Request caching and optimization
+// In-memory cache for server-side requests
 const API_CACHE = new Map<string, { data: any; timestamp: number }>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-const LANDING_CACHE_DURATION = 15 * 60 * 1000 // 15 minutes for landing page data
+// Cache durations based on data type
+const CACHE_DURATIONS = {
+  STATIC: 24 * 60 * 60 * 1000,     // 24 hours for relatively static data
+  SEMI_STATIC: 60 * 60 * 1000,     // 1 hour for semi-static data
+  DYNAMIC: 15 * 60 * 1000,         // 15 minutes for frequently changing data
+  LANDING: 30 * 60 * 1000          // 30 minutes for landing page data
+}
 
 // Rate limiting controls
-const REQUEST_DELAY = 1500 // 1.5 seconds between requests
-const MAX_RETRIES = 3
-const BASE_RETRY_DELAY = 2000 // 2 seconds base delay for retries
+const REQUEST_DELAY = 1000 // 1 second between requests (reduced from 1.5)
+const MAX_RETRIES = 2      // Reduced retries
+const BASE_RETRY_DELAY = 1000 // 1 second base delay for retries (reduced from 2)
 let lastRequestTime = 0
 
 // Helper function to build sorted URL parameters
@@ -184,66 +196,147 @@ const processAnimeData = (anime: AnimeData): AnimeData => {
   return anime
 }
 
+// Enhanced cache key generator with data type awareness
+const generateCacheKey = (endpoint: string, params: Record<string, any> = {}): string => {
+  const sortedParams = Object.keys(params).sort().reduce((obj: Record<string, any>, key) => {
+    obj[key] = params[key];
+    return obj;
+  }, {});
+  
+  return `${endpoint}_${JSON.stringify(sortedParams)}`;
+}
+
+// Determine cache duration based on endpoint type
+const getCacheDuration = (endpoint: string): number => {
+  if (endpoint.includes('genres') || endpoint.includes('top/anime')) {
+    return CACHE_DURATIONS.STATIC;
+  }
+  
+  if (endpoint.includes('seasons')) {
+    return CACHE_DURATIONS.SEMI_STATIC;
+  }
+  
+  if (endpoint.includes('landing')) {
+    return CACHE_DURATIONS.LANDING;
+  }
+  
+  return CACHE_DURATIONS.DYNAMIC;
+}
+
+// Enhanced cache management with localStorage fallback
+const getCachedData = (cacheKey: string): any | null => {
+  // Try in-memory cache first (faster)
+  const memoryCached = API_CACHE.get(cacheKey);
+  if (memoryCached && Date.now() - memoryCached.timestamp < getCacheDuration(cacheKey)) {
+    return memoryCached.data;
+  }
+  
+  // Try localStorage cache for client-side
+  if (typeof window !== 'undefined') {
+    const localStorageCached = getCache(cacheKey);
+    if (localStorageCached) {
+      // Update in-memory cache
+      API_CACHE.set(cacheKey, { data: localStorageCached, timestamp: Date.now() });
+      return localStorageCached;
+    }
+  }
+  
+  return null;
+};
+
+const setCachedData = (cacheKey: string, data: any): void => {
+  const timestamp = Date.now();
+  
+  // Update in-memory cache
+  API_CACHE.set(cacheKey, { data, timestamp });
+  
+  // Update localStorage cache for client-side
+  if (typeof window !== 'undefined') {
+    setCache(cacheKey, data);
+  }
+};
+
 async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
-  const cached = API_CACHE.get(cacheKey)
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data
+  // Check cache first
+  const cached = getCachedData(cacheKey);
+  if (cached) {
+    return cached;
   }
 
-  // Implement request throttling
-  const now = Date.now()
-  const timeSinceLastRequest = now - lastRequestTime
-  if (timeSinceLastRequest < REQUEST_DELAY) {
-    const waitTime = REQUEST_DELAY - timeSinceLastRequest
-    await new Promise(resolve => setTimeout(resolve, waitTime))
+  // Check if there's already a pending request for this endpoint
+  if (pendingRequests.has(endpoint)) {
+    // Return the existing promise to deduplicate the request
+    return pendingRequests.get(endpoint);
   }
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  // Create a new promise for this request
+  const requestPromise = (async () => {
     try {
-      lastRequestTime = Date.now()
-      const response = await fetch(`${JIKAN_API_BASE}/${endpoint}`)
-
-      // If we get a 429, wait and retry (except on final attempt)
-      if (response.status === 429 && attempt < MAX_RETRIES) {
-        const delay = BASE_RETRY_DELAY * Math.pow(2, attempt) // Exponential backoff starting at 2 seconds
-        await new Promise(resolve => setTimeout(resolve, delay))
-        continue
+      // Implement request throttling
+      const now = Date.now()
+      const timeSinceLastRequest = now - lastRequestTime
+      if (timeSinceLastRequest < REQUEST_DELAY) {
+        const waitTime = REQUEST_DELAY - timeSinceLastRequest
+        await new Promise(resolve => setTimeout(resolve, waitTime))
       }
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          lastRequestTime = Date.now()
+          const response = await fetch(`${JIKAN_API_BASE}/${endpoint}`)
 
-      const data = await response.json()
+          // If we get a 429, wait and retry (except on final attempt)
+          if (response.status === 429 && attempt < MAX_RETRIES) {
+            const delay = BASE_RETRY_DELAY * Math.pow(2, attempt) // Exponential backoff starting at 1 second
+            await new Promise(resolve => setTimeout(resolve, delay))
+            continue
+          }
 
-      // Process data to add year for movies
-      if (data.data) {
-        if (Array.isArray(data.data)) {
-          data.data.forEach(processAnimeData)
-        } else {
-          processAnimeData(data.data)
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const data = await response.json()
+
+          // Process data to add year for movies
+          if (data.data) {
+            if (Array.isArray(data.data)) {
+              data.data.forEach(processAnimeData)
+            } else {
+              processAnimeData(data.data)
+            }
+          }
+
+          // Cache the data with appropriate duration
+          setCachedData(cacheKey, data);
+          return data
+        } catch (error) {
+          // If this is the final attempt or a non-retryable error, throw it
+          if (attempt === MAX_RETRIES || (error instanceof Error && !error.message.includes('429'))) {
+            throw error
+          }
+
+          // Wait before retrying (except on final attempt)
+          if (attempt < MAX_RETRIES) {
+            const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
         }
       }
 
-      API_CACHE.set(cacheKey, { data, timestamp: Date.now() })
-      return data
-    } catch (error) {
-      // If this is the final attempt or a non-retryable error, throw it
-      if (attempt === MAX_RETRIES || (error instanceof Error && !error.message.includes('429'))) {
-        // Log the specific endpoint that failed
-        throw error
-      }
-
-      // Wait before retrying (except on final attempt)
-      if (attempt < MAX_RETRIES) {
-        const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
+      // This should never be reached, but TypeScript needs it
+      throw new Error(`Failed to fetch ${endpoint} after ${MAX_RETRIES} attempts`)
+    } finally {
+      // Remove the pending request when completed (success or error)
+      pendingRequests.delete(endpoint);
     }
-  }
+  })();
 
-  // This should never be reached, but TypeScript needs it
-  throw new Error(`Failed to fetch ${endpoint} after ${MAX_RETRIES} attempts`)
+  // Store the promise in the pending requests map
+  pendingRequests.set(endpoint, requestPromise);
+
+  // Return the promise
+  return requestPromise;
 }
 
 // Optimized API functions
@@ -257,18 +350,18 @@ export const fetchTopAnime = async (page = 1, limit = 20, includeNsfw = false): 
 
 // Optimized landing page functions with longer cache duration
 export const fetchTopAnimeForLanding = async (includeNsfw = false): Promise<AnimeData[]> => {
-   const cacheKey = `landing_top_anime_${includeNsfw}`
-   const cached = API_CACHE.get(cacheKey)
+   const cacheKey = generateCacheKey('landing_top_anime', { includeNsfw });
+   const cached = getCachedData(cacheKey);
 
-   if (cached && Date.now() - cached.timestamp < LANDING_CACHE_DURATION) {
-     return cached.data
+   if (cached) {
+     return cached;
    }
 
    const response = await fetchTopAnime(1, 10, includeNsfw)
    const data = response.data
 
    // Cache with longer duration for landing page
-   API_CACHE.set(cacheKey, { data, timestamp: Date.now() })
+   setCachedData(cacheKey, data);
    return data
  }
 
@@ -306,8 +399,11 @@ export const searchAnime = async (query: string, page = 1, limit = 20, includeNs
   return response
 }
 
-export const fetchSeasonalAnime = async (year: number, season: string, page = 1, limit = 20, includeNsfw = false): Promise<AnimeResponse> => {
-  const response = await fetchFromApi<AnimeResponse>(`seasons/${year}/${season}?page=${page}&limit=${limit}`, `seasonal_${year}_${season}_${page}_${limit}`)
+export const fetchSeasonalAnime = async (year: number, season: string, page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
+  let url = `seasons/${year}/${season}?page=${page}&limit=${limit}`
+  url = buildSortParams(url, sort, order);
+  
+  const response = await fetchFromApi<AnimeResponse>(url, `seasonal_${year}_${season}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
@@ -387,17 +483,17 @@ export const fetchSeasonalAnimeFast = async (year: number, season: string, inclu
 
 // Optimized landing page function for seasonal anime with longer cache
 export const fetchSeasonalAnimeForLanding = async (year: number, season: string, includeNsfw = false, limit = 10): Promise<AnimeData[]> => {
-   const cacheKey = `landing_seasonal_anime_${year}_${season}_${includeNsfw}_${limit}`
-   const cached = API_CACHE.get(cacheKey)
+   const cacheKey = generateCacheKey('landing_seasonal_anime', { year, season, includeNsfw, limit });
+   const cached = getCachedData(cacheKey);
 
-   if (cached && Date.now() - cached.timestamp < LANDING_CACHE_DURATION) {
-     return cached.data
+   if (cached) {
+     return cached;
    }
 
    const data = await fetchSeasonalAnimeFast(year, season, includeNsfw, limit)
 
    // Cache with longer duration for landing page
-   API_CACHE.set(cacheKey, { data, timestamp: Date.now() })
+   setCachedData(cacheKey, data);
    return data
  }
 
@@ -410,15 +506,49 @@ export const fetchAnimeCharacters = async (id: number): Promise<{ data: Characte
 }
 
 // Image optimization utilities
-const IMAGE_CACHE = new Map<string, string>()
+// Use localStorage for persistent image URL caching
+const IMAGE_CACHE_KEY = 'cryoanime_image_cache';
+let IMAGE_CACHE: Map<string, string> = new Map();
+
+// Initialize image cache from localStorage
+const initImageCache = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const cached = localStorage.getItem(IMAGE_CACHE_KEY);
+      if (cached) {
+        IMAGE_CACHE = new Map(Object.entries(JSON.parse(cached)));
+      }
+    } catch (e) {
+      // Ignore errors in localStorage parsing
+    }
+  }
+};
+
+// Save image cache to localStorage
+const saveImageCache = () => {
+  if (typeof window !== 'undefined' && IMAGE_CACHE.size > 0) {
+    try {
+      const obj = Object.fromEntries(IMAGE_CACHE);
+      localStorage.setItem(IMAGE_CACHE_KEY, JSON.stringify(obj));
+    } catch (e) {
+      // Ignore errors in localStorage saving
+    }
+  }
+};
+
+// Initialize on load
+if (typeof window !== 'undefined') {
+  initImageCache();
+  // Save cache when page is about to unload
+  window.addEventListener('beforeunload', saveImageCache);
+}
 
 export const getOptimizedImageUrl = (anime: AnimeData): string => {
-  const cacheKey = `anime_${anime.mal_id}`
+  const cacheKey = `anime_${anime.mal_id}`;
 
   // Check cache first
-  const cachedUrl = IMAGE_CACHE.get(cacheKey)
-  if (cachedUrl) {
-    return cachedUrl
+  if (IMAGE_CACHE.has(cacheKey)) {
+    return IMAGE_CACHE.get(cacheKey)!;
   }
 
   // Fetch only one image format at max resolution
@@ -441,13 +571,17 @@ export const getOptimizedImageUrl = (anime: AnimeData): string => {
 
   // Cache the result if a URL was found
   if (selectedUrl) {
-    IMAGE_CACHE.set(cacheKey, selectedUrl)
-    return selectedUrl
+    IMAGE_CACHE.set(cacheKey, selectedUrl);
+    // Save to localStorage periodically
+    if (IMAGE_CACHE.size % 10 === 0) {
+      saveImageCache();
+    }
+    return selectedUrl;
   }
 
   // Return a placeholder if no URL is available
-  return '/placeholder-anime.jpg'
-}
+  return '/placeholder-anime.jpg';
+};
 
 // Image preloading utility
 export const preloadImage = (src: string): Promise<void> => {
@@ -482,17 +616,24 @@ export const getImageUrl = (anime: AnimeData): string => {
 
 // Cache management utilities
 export const clearImageCache = (): void => {
-  IMAGE_CACHE.clear()
-}
+  IMAGE_CACHE.clear();
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(IMAGE_CACHE_KEY);
+    } catch (e) {
+      // Ignore errors in localStorage removal
+    }
+  }
+};
 
 export const clearApiCache = (): void => {
-  API_CACHE.clear()
-}
+  API_CACHE.clear();
+};
 
 export const clearAllCaches = (): void => {
-  clearImageCache()
-  clearApiCache()
-}
+  clearImageCache();
+  clearApiCache();
+};
 
 // Performance monitoring utilities
 export const getCacheStats = () => {
@@ -632,6 +773,22 @@ export const fetchNextDayAnime = async (includeNsfw = false): Promise<AnimeData[
   }
 }
 
+// Get anime airing on the current day
+export const fetchTodayAnime = async (includeNsfw = false): Promise<AnimeData[]> => {
+  const now = new Date()
+  // Get today's date
+  const today = new Date(now)
+  
+  // Get day name in lowercase (monday, tuesday, etc.)
+  const dayName = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+  
+  try {
+    const response = await fetchAnimeSchedule(dayName, includeNsfw)
+    return response.data
+  } catch (error) {
+    return []
+  }
+}
 // Helper function to get current season information
 export const getCurrentSeasonInfo = (): { year: number; season: string; displayName: string } => {
   const now = new Date()

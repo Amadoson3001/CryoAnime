@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import Pagination from '@/components/Pagination'
 import { AnimeGrid } from '@/components/anime_cards'
 import { fetchMovies, AnimeData, AnimeResponse } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
@@ -503,13 +504,15 @@ const MoviesPage = () => {
                     </Box>
 
                     {/* Pagination */}
-                    {!loading && !error && animeList.length > 0 && totalPages > 1 && (
-                        <Box mt="8">
-                            <Flex align="center" justify="center" gap="2" wrap="wrap">
-                                {renderPagination()}
-                            </Flex>
-                        </Box>
-                    )}
+                    <Box mt="8">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            hasNextPage={hasNextPage}
+                            onPageChange={handlePageChange}
+                            loading={loading}
+                        />
+                    </Box>
 
                     {/* Empty State */}
                     {!loading && !error && animeList.length === 0 && (

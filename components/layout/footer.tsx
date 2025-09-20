@@ -18,7 +18,7 @@ const Footer = () => {
     explore: [
       { name: 'Top Anime', href: '/top-rated' },
       { name: 'Genres', href: '/Explore' },
-      { name: 'Seasons (Coming Soon)', href: '#' },
+      { name: 'Seasons', href: '/seasonal' },
       { name: 'Schedule', href: '/schedule' },
     ],
     community: [

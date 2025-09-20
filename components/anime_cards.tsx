@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { memo } from 'react'
 import Image from 'next/image'
 import { Star, Calendar, Clock, PlayCircle } from 'lucide-react'
 import { AnimeData, formatScore, formatDate, getImageUrl } from '@/lib/api'
@@ -148,6 +148,19 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
   )
 }
 
+// Memoize AnimeCard component to prevent unnecessary re-renders
+const MemoizedAnimeCard = memo(AnimeCard, (prevProps, nextProps) => {
+  // Custom comparison function to check if props have changed
+  return (
+    prevProps.anime.mal_id === nextProps.anime.mal_id &&
+    prevProps.anime.title === nextProps.anime.title &&
+    prevProps.anime.title_english === nextProps.anime.title_english &&
+    prevProps.anime.score === nextProps.anime.score &&
+    prevProps.anime.year === nextProps.anime.year &&
+    prevProps.priority === nextProps.priority
+  );
+});
+
 interface AnimeGridProps {
   animeList: AnimeData[]
   loading?: boolean
@@ -229,10 +242,10 @@ const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error
       gap={{ initial: '4', md: '6' }}
     >
       {animeList.map((anime, index) => (
-        <AnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 6} />
+        <MemoizedAnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 6} />
       ))}
     </Grid>
   )
 }
 
-export { AnimeCard, AnimeGrid }
+export { AnimeCard, AnimeGrid, MemoizedAnimeCard }

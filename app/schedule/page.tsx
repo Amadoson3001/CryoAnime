@@ -4,12 +4,12 @@ import React, { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { AnimeGrid, AnimeCard } from '@/components/anime_cards'
-import { fetchNextDayAnime, fetchAnimeSchedule, getCurrentSeasonInfo, AnimeData } from '@/lib/api'
+import { AnimeCard } from '@/components/anime_cards'
+import { fetchAnimeSchedule, getCurrentSeasonInfo, AnimeData } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
 import { getCache, setCache } from '@/lib/cache'
 import { Box, Container, Flex, Text, Heading, Card, Grid, Badge } from '@radix-ui/themes'
-import { Calendar, Clock, Info, Star } from 'lucide-react'
+import { Calendar, Clock, Info } from 'lucide-react'
 
 interface DaySchedule {
     day: string
@@ -19,79 +19,52 @@ interface DaySchedule {
 }
 
 const SchedulePage = () => {
-    const [tomorrowAnime, setTomorrowAnime] = useState<AnimeData[]>([])
     const [weeklySchedule, setWeeklySchedule] = useState<DaySchedule[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [seasonInfo, setSeasonInfo] = useState<{ year: number; season: string; displayName: string } | null>(null)
-    const [nextDayInfo, setNextDayInfo] = useState<string>('')
-    const [tomorrowLoading, setTomorrowLoading] = useState(true)
+    const [todayInfo, setTodayInfo] = useState<string>('')
     const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
     // Days of the week for the schedule - will be reordered to start from today
     const baseDaysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
 
-    // Get season information and next day on component mount
+    // Get season information and today on component mount
     useEffect(() => {
         const seasonData = getCurrentSeasonInfo()
         setSeasonInfo(seasonData)
 
-        // Get next day's information
-        const tomorrow = new Date()
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        const dayName = tomorrow.toLocaleDateString('en-US', { weekday: 'long' })
-        const dateString = tomorrow.toLocaleDateString('en-US', {
+        // Get today's information
+        const today = new Date()
+        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' })
+        const dateString = today.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
         })
-        setNextDayInfo(`${dayName}, ${dateString}`)
+        setTodayInfo(`${dayName}, ${dateString}`)
 
-        // Get current day and reorder days to start from today
-        const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-        const todayIndex = baseDaysOfWeek.indexOf(today)
+        // Get today's day to start the weekly schedule from
+        const todayDay = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+        const todayIndex = baseDaysOfWeek.indexOf(todayDay)
         const reorderedDays = [
             ...baseDaysOfWeek.slice(todayIndex),
             ...baseDaysOfWeek.slice(0, todayIndex)
         ]
 
         // Initialize weekly schedule structure
-        const initialSchedule = reorderedDays.map(day => ({
-            day,
-            displayName: day.charAt(0).toUpperCase() + day.slice(1),
-            anime: [],
-            loading: true
-        }))
-        setWeeklySchedule(initialSchedule)
+        const initialSchedule = reorderedDays.map((day) => {
+            const displayName = day.charAt(0).toUpperCase() + day.slice(1);
+            return {
+                day,
+                displayName,
+                anime: [],
+                loading: true
+            };
+        });
+        setWeeklySchedule(initialSchedule);
     }, [])
 
-    // Fetch anime airing tomorrow (featured section)
-    useEffect(() => {
-        const fetchTomorrowData = async () => {
-            try {
-                setTomorrowLoading(true)
-                const includeNsfw = getNsfwPreference()
-                const cacheKey = `tomorrow_anime_${includeNsfw}`
-                const cachedData = getCache(cacheKey)
-
-                if (cachedData) {
-                    setTomorrowAnime(cachedData)
-                } else {
-                    const data = await fetchNextDayAnime(includeNsfw)
-                    setTomorrowAnime(data)
-                    setCache(cacheKey, data)
-                }
-            } catch (err) {
-                console.error("Failed to fetch tomorrow's anime", err)
-            } finally {
-                setTomorrowLoading(false)
-            }
-        }
-
-        if (seasonInfo) {
-            fetchTomorrowData()
-        }
-    }, [seasonInfo])
 
     // Fetch weekly schedule data
     useEffect(() => {
@@ -176,10 +149,10 @@ const SchedulePage = () => {
 
     // Track initial load completion
     useEffect(() => {
-        if (seasonInfo && !tomorrowLoading && !loading) {
+        if (seasonInfo && !loading) {
             setInitialLoadComplete(true)
         }
-    }, [seasonInfo, tomorrowLoading, loading])
+    }, [seasonInfo, loading])
 
     // Show loading screen until initial data is loaded
     if (!initialLoadComplete) {
@@ -288,7 +261,7 @@ const SchedulePage = () => {
                             <Calendar size={32} style={{ color: '#3b82f6' }} />
                         </Flex>
                         <Text as="p" size="4" style={{ color: '#cbd5e1', maxWidth: '600px', margin: '0 auto' }}>
-                            Anime airing tomorrow - {nextDayInfo}
+                            Anime schedule starting from today - {todayInfo}
                         </Text>
                     </Box>
 
@@ -304,32 +277,6 @@ const SchedulePage = () => {
                         </Box>
                     )}
 
-                    {/* Tomorrow's Anime Section (Featured) */}
-                    <Box mb="12">
-                        <Box mb="6" style={{ textAlign: 'center' }}>
-                            <Flex align="center" justify="center" gap="2" mb="4">
-                                <Star size={24} style={{ color: '#fbbf24' }} />
-                                <Heading as="h2" size="6" style={{ color: 'white' }}>
-                                    Airing Tomorrow
-                                </Heading>
-                                <Star size={24} style={{ color: '#fbbf24' }} />
-                            </Flex>
-                        </Box>
-
-                        {!tomorrowLoading && tomorrowAnime.length > 0 && (
-                            <Box mb="4" style={{ textAlign: 'center' }}>
-                                <Text as="p" size="2" style={{ color: '#94a3b8' }}>
-                                    {tomorrowAnime.length} anime {tomorrowAnime.length === 1 ? 'episode' : 'episodes'} airing tomorrow
-                                </Text>
-                            </Box>
-                        )}
-
-                        <AnimeGrid
-                            animeList={tomorrowAnime}
-                            loading={tomorrowLoading}
-                            error={null}
-                        />
-                    </Box>
 
                     {/* Weekly Schedule Section */}
                     <Box mb="8">
@@ -351,75 +298,133 @@ const SchedulePage = () => {
                         )}
 
                         <Flex direction="column" gap="8">
-                            {weeklySchedule.map((daySchedule) => (
-                                <Box key={daySchedule.day}>
-                                    <Flex align="center" gap="3" mb="4">
-                                        <Heading as="h3" size="5" style={{ color: 'white' }}>
-                                            {daySchedule.displayName}
-                                        </Heading>
-                                        <Badge
-                                            variant="soft"
-                                            style={{
-                                                backgroundColor: '#3b82f6',
-                                                color: 'white'
-                                            }}
-                                        >
-                                            {daySchedule.anime.length} anime
-                                        </Badge>
-                                    </Flex>
+                            {weeklySchedule.map((daySchedule, index) => (
+                                index === 0 ? (
+                                    // Today's section (integrated with rest of page)
+                                    <Box
+                                        key={daySchedule.day}
+                                        mb="8"
+                                    >
+                                        <Flex align="center" gap="3" mb="6">
+                                            <Heading as="h2" size="7" style={{ color: 'white', fontWeight: 'bold' }}>
+                                                Airing Today
+                                            </Heading>
+                                            <Calendar size={36} style={{ color: '#3b82f6' }} />
+                                        </Flex>
 
-                                    {daySchedule.loading ? (
-                                        <Grid columns={{ initial: '2', sm: '3', md: '4', lg: '5' }} gap="4">
-                                            {Array.from({ length: 5 }).map((_, index) => (
-                                                <Card key={index} style={{ overflow: 'hidden', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
-                                                    <Box style={{ aspectRatio: '3/4', backgroundColor: '#334155' }} />
-                                                    <Box p="3" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                        <Box style={{ height: '16px', backgroundColor: '#334155', borderRadius: '4px' }} />
-                                                        <Box style={{ height: '12px', backgroundColor: '#334155', borderRadius: '4px', width: '75%' }} />
-                                                    </Box>
-                                                </Card>
-                                            ))}
-                                        </Grid>
-                                    ) : daySchedule.anime.length > 0 ? (
-                                        <Box style={{
-                                            overflowX: 'auto',
-                                            paddingBottom: '8px',
-                                            scrollbarWidth: 'thin',
-                                            scrollbarColor: '#334155 transparent'
-                                        }}>
-                                            <Flex gap="4" style={{
-                                                width: 'max-content',
-                                                minWidth: '100%'
-                                            }}>
-                                                {daySchedule.anime.map((anime, index) => (
-                                                    <Box
-                                                        key={`${anime.mal_id}-${index}`}
-                                                        style={{
-                                                            width: '200px',
-                                                            flexShrink: 0
-                                                        }}
-                                                    >
-                                                        <AnimeCard anime={anime} priority={false} />
+                                        <Text as="p" size="5" mb="8" style={{ color: '#cbd5e1', maxWidth: '600px' }}>
+                                            Fresh episodes from your favorite shows are dropping today
+                                        </Text>
+
+                                        {daySchedule.loading ? (
+                                            <Grid columns={{ initial: '2', sm: '2', md: '3', lg: '4' }} gap="6" style={{ maxWidth: '1200px' }}>
+                                                {Array.from({ length: 4 }).map((_, index) => (
+                                                    <Card key={index} style={{ overflow: 'hidden', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
+                                                        <Box style={{ aspectRatio: '2/3', backgroundColor: '#334155' }} />
+                                                        <Box p="3" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                            <Box style={{ height: '16px', backgroundColor: '#334155', borderRadius: '4px' }} />
+                                                            <Box style={{ height: '12px', backgroundColor: '#334155', borderRadius: '4px', width: '75%' }} />
+                                                        </Box>
+                                                    </Card>
+                                                ))}
+                                            </Grid>
+                                        ) : daySchedule.anime.length > 0 ? (
+                                            <Grid columns={{ initial: '2', sm: '2', md: '3', lg: '4' }} gap="6" style={{ maxWidth: '1200px' }}>
+                                                {daySchedule.anime.map((anime, animeIndex) => (
+                                                    <Box key={`${anime.mal_id}-${animeIndex}`}>
+                                                        <AnimeCard anime={anime} priority={true} />
                                                     </Box>
                                                 ))}
-                                            </Flex>
-                                        </Box>
-                                    ) : (
-                                        <Box
-                                            style={{
-                                                textAlign: 'center',
-                                                padding: '32px',
-                                                backgroundColor: '#1e293b',
-                                                border: '1px solid #334155',
-                                                borderRadius: '8px'
-                                            }}
-                                        >
-                                            <Text as="p" size="3" style={{ color: '#64748b' }}>
-                                                No anime scheduled for {daySchedule.displayName.toLowerCase()}
-                                            </Text>
-                                        </Box>
-                                    )}
-                                </Box>
+                                            </Grid>
+                                        ) : (
+                                            <Box
+                                                style={{
+                                                    textAlign: 'center',
+                                                    padding: '3rem 1rem',
+                                                    backgroundColor: '#1e293b',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px',
+                                                    maxWidth: '60px',
+                                                    margin: '0 auto'
+                                                }}
+                                            >
+                                                <Text as="p" size="4" style={{ color: '#cbd5e1' }}>
+                                                    No anime scheduled for today
+                                                </Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                ) : (
+                                    // Regular days
+                                    <Box key={daySchedule.day}>
+                                        <Flex align="center" gap="3" mb="4">
+                                            <Heading as="h3" size="5" style={{ color: 'white' }}>
+                                                {daySchedule.displayName}
+                                            </Heading>
+                                            <Badge
+                                                variant="soft"
+                                                style={{
+                                                    backgroundColor: '#3b82f6',
+                                                    color: 'white'
+                                                }}
+                                            >
+                                                {daySchedule.anime.length} anime
+                                            </Badge>
+                                        </Flex>
+
+                                        {daySchedule.loading ? (
+                                            <Grid columns={{ initial: '2', sm: '3', md: '4', lg: '5' }} gap="4">
+                                                {Array.from({ length: 5 }).map((_, index) => (
+                                                    <Card key={index} style={{ overflow: 'hidden', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
+                                                        <Box style={{ aspectRatio: '3/4', backgroundColor: '#334155' }} />
+                                                        <Box p="3" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                            <Box style={{ height: '16px', backgroundColor: '#334155', borderRadius: '4px' }} />
+                                                            <Box style={{ height: '12px', backgroundColor: '#334155', borderRadius: '4px', width: '75%' }} />
+                                                        </Box>
+                                                    </Card>
+                                                ))}
+                                            </Grid>
+                                        ) : daySchedule.anime.length > 0 ? (
+                                            <Box style={{
+                                                overflowX: 'auto',
+                                                paddingBottom: '8px',
+                                                scrollbarWidth: 'thin',
+                                                scrollbarColor: '#334155 transparent'
+                                            }}>
+                                                <Flex gap="4" style={{
+                                                    width: 'max-content',
+                                                    minWidth: '100%'
+                                                }}>
+                                                    {daySchedule.anime.map((anime, animeIndex) => (
+                                                        <Box
+                                                            key={`${anime.mal_id}-${animeIndex}`}
+                                                            style={{
+                                                                width: '200px',
+                                                                flexShrink: 0
+                                                            }}
+                                                        >
+                                                            <AnimeCard anime={anime} priority={false} />
+                                                        </Box>
+                                                    ))}
+                                                </Flex>
+                                            </Box>
+                                        ) : (
+                                            <Box
+                                                style={{
+                                                    textAlign: 'center',
+                                                    padding: '32px',
+                                                    backgroundColor: '#1e293b',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px'
+                                                }}
+                                            >
+                                                <Text as="p" size="3" style={{ color: '#64748b' }}>
+                                                    No anime scheduled for {daySchedule.day}
+                                                </Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                )
                             ))}
                         </Flex>
                     </Box>

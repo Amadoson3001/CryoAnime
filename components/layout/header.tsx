@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Menu, X, Home, Star, TrendingUp, Heart, Shield, Calendar } from 'lucide-react'
+import { Search, Menu, X, Home, Star, TrendingUp, Heart, Shield, Calendar, Leaf } from 'lucide-react'
 import {
   Box,
   Flex,
@@ -34,13 +34,20 @@ const Header = () => {
   // Update dropdown position when search container changes
   useEffect(() => {
     if (searchContainerRef.current && showSuggestions) {
-      const rect = searchContainerRef.current.getBoundingClientRect()
-      setDropdownPosition({
-        top: rect.bottom + 8,
-        left: rect.left + (rect.width / 2)
-      })
+      // Use requestAnimationFrame to batch DOM reads and writes to reduce layout thrashing
+      const updatePosition = () => {
+        const rect = searchContainerRef.current!.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + 8,
+          left: rect.left + (rect.width / 2)
+        });
+      };
+
+      // Use requestAnimationFrame to avoid forced synchronous layout
+      const rafId = requestAnimationFrame(updatePosition);
+      return () => cancelAnimationFrame(rafId);
     }
-  }, [showSuggestions, searchQuery])
+  }, [showSuggestions, searchQuery]);
 
   // Add scroll effect for header animation
   useEffect(() => {
@@ -58,7 +65,7 @@ const Header = () => {
         setIsMenuOpen(false)
       }
     }
-    
+
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [isMenuOpen])
@@ -132,6 +139,7 @@ const Header = () => {
   const navigationItems = [
     { href: '/', label: 'Home', icon: Home },
     { href: '/trending', label: 'Trending', icon: TrendingUp },
+    { href: '/seasonal', label: 'Seasonal', icon: Leaf },
     { href: '/movies', label: 'Movies', icon: Heart },
     { href: '/top-rated', label: 'Top Rated', icon: Star },
     { href: '/schedule', label: 'Schedule', icon: Calendar }
@@ -179,7 +187,7 @@ const Header = () => {
           <Box display={{ initial: 'none', md: 'block' }} flexGrow="1">
             <Flex align="center" gap="6">
               {/* Navigation Links */}
-              <Flex align="center" gap="4">
+              <Flex align="center" gap="3">
                 {navigationItems.map((item) => (
                   <Link
                     key={item.href}
@@ -192,14 +200,14 @@ const Header = () => {
                       style={{
                         color: '#94a3b8',
                         transition: 'all 0.2s ease',
-                        padding: '8px 16px',
+                        padding: '6px 12px',
                         borderRadius: '6px',
                         position: 'relative'
                       }}
                       className="nav-link"
                     >
                       <item.icon size={16} />
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap' }}>
                         {item.label}
                       </span>
                     </Flex>
@@ -210,7 +218,7 @@ const Header = () => {
               {/* Search */}
               <Box flexGrow="1" mx="8" style={{ position: 'relative', zIndex: 1002, isolation: 'isolate' }} ref={searchContainerRef}>
                 <form onSubmit={handleSearch}>
-                  <Box style={{ maxWidth: '600px', position: 'relative' }}>
+                  <Box style={{ maxWidth: '800px', position: 'relative' }}>
                     <TextField.Root
                       placeholder="Search anime..."
                       value={searchQuery}
@@ -384,7 +392,7 @@ const Header = () => {
                     gap="3"
                     style={{
                       color: '#94a3b8',
-                      padding: '14px 16px',
+                      padding: '12px 14px',
                       borderRadius: '8px',
                       transition: 'all 0.2s ease',
                       border: '1px solid transparent',
@@ -396,7 +404,7 @@ const Header = () => {
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <item.icon size={20} />
-                    <span style={{ fontSize: '16px', fontWeight: '500' }}>
+                    <span style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap' }}>
                       {item.label}
                     </span>
                   </Flex>

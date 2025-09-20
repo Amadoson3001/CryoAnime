@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo } from 'react'
 import { AnimeGrid } from './anime_cards'
 import Link from 'next/link'
 
@@ -194,4 +194,5 @@ const FeaturedSection = () => {
   )
 }
 
-export default FeaturedSection
+// Memoize the component to prevent unnecessary re-renders
+export default memo(FeaturedSection)

@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { memo } from 'react'
 import Link from 'next/link'
 import { Compass, Star, TrendingUp } from 'lucide-react'
 import {
@@ -326,4 +326,5 @@ const Hero = () => {
   )
 }
 
-export default Hero
+// Memoize the component to prevent unnecessary re-renders
+export default memo(Hero)

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import Pagination from '@/components/Pagination'
 import { AnimeGrid } from '@/components/anime_cards'
 import { fetchSeasonalAnime, AnimeData } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
@@ -99,79 +100,6 @@ const TrendingPage = () => {
       // Smooth scroll to top
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  }
-
-  const renderPagination = () => {
-    const pages = []
-    const maxVisiblePages = 5
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    // Adjust start page if we're near the end
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
-    }
-
-    // Previous button
-    pages.push(
-      <Button
-        key="prev"
-        variant="soft"
-        disabled={currentPage === 1 || isPageLoading}
-        onClick={() => handlePageChange(currentPage - 1)}
-        style={{
-          backgroundColor: currentPage === 1 ? '#1e293b' : '#3b82f6',
-          color: currentPage === 1 ? '#64748b' : 'white',
-          border: '1px solid #334155',
-          cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-        }}
-      >
-        <ChevronLeft size={16} />
-        Previous
-      </Button>
-    )
-
-    // Page numbers
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <Button
-          key={i}
-          variant={currentPage === i ? "solid" : "soft"}
-          onClick={() => handlePageChange(i)}
-          disabled={isPageLoading}
-          style={{
-            backgroundColor: currentPage === i ? '#3b82f6' : '#1e293b',
-            color: currentPage === i ? 'white' : '#cbd5e1',
-            border: '1px solid #334155',
-            minWidth: '40px',
-            cursor: isPageLoading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {i}
-        </Button>
-      )
-    }
-
-    // Next button
-    pages.push(
-      <Button
-        key="next"
-        variant="soft"
-        disabled={currentPage === totalPages || !hasNextPage || isPageLoading}
-        onClick={() => handlePageChange(currentPage + 1)}
-        style={{
-          backgroundColor: (currentPage === totalPages || !hasNextPage) ? '#1e293b' : '#3b82f6',
-          color: (currentPage === totalPages || !hasNextPage) ? '#64748b' : 'white',
-          border: '1px solid #334155',
-          cursor: (currentPage === totalPages || !hasNextPage) ? 'not-allowed' : 'pointer'
-        }}
-      >
-        Next
-        <ChevronRight size={16} />
-      </Button>
-    )
-
-    return pages
   }
 
   // Full-page loading screen
@@ -493,13 +421,15 @@ const TrendingPage = () => {
           </Box>
 
           {/* Pagination */}
-          {!loading && !error && animeList.length > 0 && totalPages > 1 && (
-            <Box mt="8">
-              <Flex align="center" justify="center" gap="2" wrap="wrap">
-                {renderPagination()}
-              </Flex>
-            </Box>
-          )}
+          <Box mt="8">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              hasNextPage={hasNextPage}
+              onPageChange={handlePageChange}
+              loading={loading}
+            />
+          </Box>
 
           {/* Page Loading Overlay */}
           {isPageLoading && (

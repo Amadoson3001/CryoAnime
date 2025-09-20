@@ -1,13 +1,16 @@
 // app/layout.tsx (or pages/_app.tsx)
 import './globals.css'
 import './anime-theme.css'
+import './optimized-animations.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Theme } from '@radix-ui/themes'
 import '@radix-ui/themes/styles.css'
 import Script from 'next/script'
-import Live2dWaifu from '@/components/live2d-waifu'
+import { Suspense } from 'react'
 import CookieConsent from '@/components/cookie-consent'
+
+import Live2dWaifuWrapper from '@/components/Live2dWaifuWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -45,7 +48,9 @@ export default function RootLayout({
           scaling="100%"
         >
           {children}
-          <Live2dWaifu />
+          <Suspense fallback={null}>
+            <Live2dWaifuWrapper />
+          </Suspense>
           <CookieConsent />
         </Theme>
       </body>

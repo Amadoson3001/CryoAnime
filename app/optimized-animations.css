@@ -1,0 +1,127 @@
+/* Optimized animations with will-change and transform-only properties for better performance */
+
+/* Optimized float animation using only transform for better performance */
+@keyframes optimizedFloat {
+  0%, 100% {
+    transform: translateY(0) translateZ(0);
+    /* will-change helps the browser optimize the animation */
+    will-change: transform;
+  }
+  50% {
+    transform: translateY(-20px) translateZ(0);
+    will-change: transform;
+  }
+}
+
+/* Optimized pulse animation */
+@keyframes optimizedPulse {
+  0%, 100% {
+    transform: scale(1) translateZ(0);
+    will-change: transform;
+  }
+  50% {
+    transform: scale(1.05) translateZ(0);
+    will-change: transform;
+  }
+}
+
+/* Optimized slide animations */
+@keyframes optimizedSlideUp {
+  0% {
+    transform: translateY(30px) translateZ(0);
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+  100% {
+    transform: translateY(0) translateZ(0);
+    opacity: 1;
+    will-change: auto;
+  }
+}
+
+@keyframes optimizedSlideInUp {
+  0% {
+    transform: translateY(100%) translateZ(0);
+    will-change: transform;
+  }
+  100% {
+    transform: translateY(0) translateZ(0);
+    will-change: auto;
+  }
+}
+
+/* Optimized bounce animation */
+@keyframes optimizedBounce {
+  0%, 100% {
+    transform: translateY(0) translateZ(0);
+    will-change: transform;
+  }
+  50% {
+    transform: translateY(-10px) translateZ(0);
+    will-change: transform;
+  }
+}
+
+/* Utility classes for optimized animations */
+.optimized-float {
+  animation: optimizedFloat 6s ease-in-out infinite;
+}
+
+.optimized-pulse {
+  animation: optimizedPulse 3s ease-in-out infinite;
+}
+
+.optimized-slide-up {
+  animation: optimizedSlideUp 1s ease-out;
+}
+
+.optimized-slide-in-up {
+  animation: optimizedSlideInUp 0.8s ease-out;
+}
+
+.optimized-bounce {
+  animation: optimizedBounce 1.5s ease-in-out infinite;
+}
+
+/* Animation delay utilities to reduce JS-based delays */
+.animation-delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-600 {
+  animation-delay: 0.6s;
+}
+
+.animation-delay-700 {
+  animation-delay: 0.7s;
+}
+
+.animation-delay-800 {
+  animation-delay: 0.8s;
+}
+
+/* Animation fill mode utilities */
+.animation-fill-both {
+  animation-fill-mode: both;
+}
+
+/* Contain property for better performance on animated elements */
+.animation-container {
+  contain: layout style paint;
+}
