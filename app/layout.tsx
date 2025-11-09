@@ -29,17 +29,36 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className={inter.className} style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}>
+      <body
+        className={inter.className}
+        style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}
+      >
+        {/* Minimal inline theme guard to avoid extra runtime work */}
         <Script
           id="theme-script"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `
-              // Prevent dark theme hydration mismatch
-              document.documentElement.classList.add('dark');
-            `,
+            __html: `document.documentElement.classList.add('dark');`,
           }}
         />
+
+        {/* Potato-mode: if user previously opted into ultra-low effects, apply class ASAP */}
+        <Script
+          id="potato-pref"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const pref = window.localStorage.getItem('cryoanime-potato-mode');
+                if (pref === '1') {
+                  document.documentElement.classList.add('potato-mode');
+                }
+              } catch (e) {}
+            `
+          }}
+        />
+
+        {/* Keep Radix Theme but avoid dynamic props that could cause re-renders */}
         <Theme
           accentColor="blue"
           grayColor="slate"
@@ -48,10 +67,15 @@ export default function RootLayout({
           scaling="100%"
         >
           {children}
+
+          {/* Defer non-critical, heavy UI to reduce initial main-thread work */}
           <Suspense fallback={null}>
             <Live2dWaifuWrapper />
           </Suspense>
-          <CookieConsent />
+
+          <Suspense fallback={null}>
+            <CookieConsent />
+          </Suspense>
         </Theme>
       </body>
     </html>

@@ -1,8 +1,19 @@
 'use client'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Search, Menu, X, Home, Star, TrendingUp, Heart, Shield, Calendar, Leaf } from 'lucide-react'
+import {
+  Search,
+  Menu,
+  X,
+  Home,
+  Star,
+  TrendingUp,
+  Heart,
+  Shield,
+  Calendar,
+  Leaf
+} from 'lucide-react'
 import {
   Box,
   Flex,
@@ -15,7 +26,29 @@ import { searchAnime, AnimeData } from '@/lib/api'
 import { getNsfwPreference, setNsfwPreference } from '@/lib/userPreferences'
 import { AnimeSearchResults } from '@/components/animesearchcard'
 
-const Header = () => {
+/**
+ * Extremely lightweight device hint so we can degrade behaviour on "potato" devices.
+ * Uses only synchronous, cheap checks and caches result.
+ */
+const useIsLowEndDevice = () => {
+  const [isLowEnd, setIsLowEnd] = useState(false)
+
+  useEffect(() => {
+    try {
+      // Cache in memory only; no extra storage calls
+      const hw = navigator.hardwareConcurrency || 2
+      const mem = (navigator as any).deviceMemory || 2
+      const isSlow = hw <= 4 || mem <= 2
+      setIsLowEnd(isSlow)
+    } catch {
+      setIsLowEnd(false)
+    }
+  }, [])
+
+  return isLowEnd
+}
+
+const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isScrolled, setIsScrolled] = useState(false)
@@ -27,69 +60,138 @@ const Header = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const isLowEnd = useIsLowEndDevice()
 
-  // Calculate dropdown position
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 70, left: '50%' as string | number })
+  // Stable navigation items to avoid re-allocations
+  const navigationItems = useMemo(
+    () => [
+      { href: '/', label: 'Home', icon: Home },
+      { href: '/trending', label: 'Trending', icon: TrendingUp },
+      { href: '/seasonal', label: 'Seasonal', icon: Leaf },
+      { href: '/movies', label: 'Movies', icon: Heart },
+      { href: '/top-rated', label: 'Top Rated', icon: Star },
+      { href: '/schedule', label: 'Schedule', icon: Calendar }
+    ],
+    []
+  )
 
-  // Update dropdown position when search container changes
+  // Dropdown anchored relative to search container.
+  // On low-end devices we avoid fixed positioning and use a simpler layout.
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    top: number
+    left: string | number
+    width?: number
+  }>({ top: 70, left: '50%' })
+
   useEffect(() => {
-    if (searchContainerRef.current && showSuggestions) {
-      // Use requestAnimationFrame to batch DOM reads and writes to reduce layout thrashing
-      const updatePosition = () => {
-        const rect = searchContainerRef.current!.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + 8,
-          left: rect.left + (rect.width / 2)
-        });
-      };
+    if (!showSuggestions || !searchContainerRef.current) return
 
-      // Use requestAnimationFrame to avoid forced synchronous layout
-      const rafId = requestAnimationFrame(updatePosition);
-      return () => cancelAnimationFrame(rafId);
+    const rect = searchContainerRef.current.getBoundingClientRect()
+
+    if (isLowEnd) {
+      // Cheaper: attach directly under search input, no transforms or fixed coord math.
+      setDropdownPosition({
+        top: rect.height + 8,
+        left: 0,
+        width: rect.width
+      })
+      return
     }
-  }, [showSuggestions, searchQuery]);
 
-  // Add scroll effect for header animation
+    const updatePosition = () => {
+      const r = searchContainerRef.current!.getBoundingClientRect()
+      setDropdownPosition({
+        top: r.bottom + 8,
+        left: r.left + r.width / 2,
+        width: r.width
+      })
+    }
+
+    const rafId = requestAnimationFrame(updatePosition)
+    return () => cancelAnimationFrame(rafId)
+  }, [showSuggestions, searchQuery, isLowEnd])
+
+  // Scroll effect: tiny, throttled; disabled on "potato" devices.
   useEffect(() => {
+    if (isLowEnd) return
+
+    let ticking = false
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
-    }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  // Close mobile menu when screen width changes to desktop size
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768 && isMenuOpen) { // 768px is the md breakpoint
-        setIsMenuOpen(false)
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 10)
+          ticking = false
+        })
       }
     }
 
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [isLowEnd])
+
+  // Close mobile menu when screen width changes to desktop size (debounced)
+  useEffect(() => {
+    let resizeTimeout: number | null = null
+
+    const handleResize = () => {
+      if (resizeTimeout !== null) {
+        window.clearTimeout(resizeTimeout)
+      }
+      resizeTimeout = window.setTimeout(() => {
+        if (window.innerWidth >= 768 && isMenuOpen) {
+          setIsMenuOpen(false)
+        }
+      }, 150)
+    }
+
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      if (resizeTimeout !== null) {
+        window.clearTimeout(resizeTimeout)
+      }
+    }
   }, [isMenuOpen])
 
-  // Initialize NSFW preference
+  // Initialize NSFW preference (no re-runs)
   useEffect(() => {
     setIsNsfwEnabled(getNsfwPreference())
   }, [])
 
   // Click outside to close suggestions
   useEffect(() => {
+    if (!showSuggestions) return
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [showSuggestions])
 
-  // Debounced search for suggestions
+  // Debounced search for suggestions with stronger guardrails
   const performSearchSuggestions = async (query: string) => {
-    if (!query.trim() || query.length < 2) {
+    const trimmed = query.trim()
+    if (trimmed.length < 2) {
       setSearchSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    // On very low-end devices, skip live suggestions entirely to save CPU/network.
+    if (isLowEnd) {
       setShowSuggestions(false)
       return
     }
@@ -97,11 +199,12 @@ const Header = () => {
     try {
       setSearchLoading(true)
       setSearchError(null)
-      const response = await searchAnime(query, 1, 6, isNsfwEnabled)
+      const response = await searchAnime(trimmed, 1, 6, isNsfwEnabled)
       setSearchSuggestions(response.data)
-      setShowSuggestions(true)
-    } catch (err) {
+      setShowSuggestions(response.data.length > 0)
+    } catch {
       setSearchError('Failed to search anime')
+      setShowSuggestions(false)
     } finally {
       setSearchLoading(false)
     }
@@ -110,56 +213,49 @@ const Header = () => {
   const handleSearchInputChange = (value: string) => {
     setSearchQuery(value)
 
-    // Clear previous timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current)
     }
 
-    // Debounce search suggestions
+    // Slightly longer debounce to reduce chatter on slow devices.
+    const delay = isLowEnd ? 500 : 300
     searchTimeoutRef.current = setTimeout(() => {
       performSearchSuggestions(value)
-    }, 300)
+    }, delay)
   }
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
-    }
+    const trimmed = searchQuery.trim()
+    if (!trimmed) return
+    setShowSuggestions(false)
+    router.push(`/search?q=${encodeURIComponent(trimmed)}`)
   }
 
   const toggleNsfw = () => {
     const newNsfwState = !isNsfwEnabled
     setIsNsfwEnabled(newNsfwState)
     setNsfwPreference(newNsfwState)
-    // Reload the page to apply the filter
-    window.location.reload()
+    // Use location.assign instead of reload for slightly cheaper navigation.
+    window.location.assign(window.location.pathname + window.location.search)
   }
-
-  const navigationItems = [
-    { href: '/', label: 'Home', icon: Home },
-    { href: '/trending', label: 'Trending', icon: TrendingUp },
-    { href: '/seasonal', label: 'Seasonal', icon: Leaf },
-    { href: '/movies', label: 'Movies', icon: Heart },
-    { href: '/top-rated', label: 'Top Rated', icon: Star },
-    { href: '/schedule', label: 'Schedule', icon: Calendar }
-  ]
 
   return (
     <Box
       style={{
-        backgroundColor: isMenuOpen ? 'rgba(15, 23, 42, 0.95)' : 'rgba(15, 23, 42, 0.7)',
+        backgroundColor: isMenuOpen ? 'rgba(15, 23, 42, 0.98)' : 'rgba(15, 23, 42, 0.85)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         boxShadow: isScrolled
-          ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+          ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.4)'
           : 'none',
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         zIndex: 1000,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'background-color 0.25s ease, box-shadow 0.25s ease',
+        willChange: 'background-color, box-shadow',
         overflow: 'visible'
       }}
       py={{ initial: "4", sm: "3" }}
@@ -248,23 +344,25 @@ const Header = () => {
                       </TextField.Slot>
                     </TextField.Root>
 
-                    {/* Search Suggestions Dropdown */}
+                    {/* Search Suggestions Dropdown - anchored and constrained for mobile performance */}
                     {showSuggestions && (
                       <div
                         style={{
                           position: 'fixed',
                           top: dropdownPosition.top,
                           left: dropdownPosition.left,
-                          transform: typeof dropdownPosition.left === 'number' ? 'translateX(-50%)' : 'translateX(-50%)',
-                          zIndex: 9999,
-                          maxHeight: '400px',
-                          overflow: 'auto',
-                          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.8)',
+                          transform: 'translateX(-50%)',
+                          zIndex: 1200,
+                          maxHeight: '320px',
+                          overflowY: 'auto',
+                          WebkitOverflowScrolling: 'touch',
+                          boxShadow: '0 16px 32px rgba(0, 0, 0, 0.85)',
                           borderRadius: '12px',
-                          border: '1px solid rgba(255, 255, 255, 0.1)',
-                          maxWidth: '700px',
+                          border: '1px solid rgba(148, 163, 253, 0.18)',
+                          maxWidth: '640px',
                           width: '100%',
-                          backgroundColor: '#1e293b'
+                          backgroundColor: '#0f172a',
+                          willChange: 'transform'
                         }}
                       >
                         <AnimeSearchResults
@@ -273,6 +371,7 @@ const Header = () => {
                           error={searchError}
                           query={searchQuery}
                           variant="dropdown"
+                          maxResults={12}
                           onClose={() => setShowSuggestions(false)}
                         />
                       </div>
@@ -359,115 +458,118 @@ const Header = () => {
         </Flex>
       </Container>
 
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <Box
-          style={{
-            position: 'fixed',
-            top: '3.5rem',
-            left: 0,
-            right: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.95)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: 999,
-            maxHeight: '100vh',
-            overflow: 'auto'
-          }}
-          py={{ initial: "3", sm: "4" }}
-        >
-          <Container size="4" px="4">
-            {/* Mobile navigation links */}
-            <Flex direction="column" gap="2" mb="4">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Flex
-                    align="center"
-                    gap="3"
-                    style={{
-                      color: '#94a3b8',
-                      padding: '12px 14px',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease',
-                      border: '1px solid transparent',
-                      backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                      backdropFilter: 'none',
-                      WebkitBackdropFilter: 'none'
-                    }}
-                    className="mobile-nav-link"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <item.icon size={20} />
-                    <span style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap' }}>
-                      {item.label}
-                    </span>
-                  </Flex>
-                </Link>
-              ))}
-            </Flex>
-
-            {/* Mobile search */}
-            <form onSubmit={handleSearch}>
-              <TextField.Root
-                placeholder="Search anime..."
-                value={searchQuery}
-                onChange={(e) => handleSearchInputChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch(e as any)
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  backgroundColor: 'rgba(30, 41, 59, 0.8)',
-                  border: '1px solid #1e293b',
-                  borderRadius: '8px'
-                }}
-                className="mobile-search"
+      {/* Mobile menu with animated slide/scale on mobile */}
+      <Box
+        display={{ initial: 'block', md: 'none' }}
+        className={`mobile-menu-container ${isMenuOpen ? 'open' : 'closed'}`}
+        style={{
+          position: 'fixed',
+          top: '3rem',
+          left: 0,
+          right: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          zIndex: 999,
+          maxHeight: '100vh',
+          overflow: 'auto',
+          transformOrigin: 'top',
+          transform: isMenuOpen ? 'translateY(0) scaleY(1)' : 'translateY(-8px) scaleY(0.9)',
+          opacity: isMenuOpen ? 1 : 0,
+          pointerEvents: isMenuOpen ? 'auto' : 'none',
+          transition: 'opacity 0.22s ease-out, transform 0.22s ease-out'
+        }}
+        py={{ initial: "3", sm: "4" }}
+      >
+        <Container size="4" px="4">
+          {/* Mobile navigation links */}
+          <Flex direction="column" gap="2" mb="4">
+            {navigationItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                style={{ textDecoration: 'none' }}
               >
-                <TextField.Slot
-                  side="left"
-                  style={{ cursor: 'pointer' }}
-                  onClick={handleSearch}
+                <Flex
+                  align="center"
+                  gap="3"
+                  style={{
+                    color: '#94a3b8',
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    transition: 'all 0.2s ease',
+                    border: '1px solid transparent',
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    backdropFilter: 'none',
+                    WebkitBackdropFilter: 'none'
+                  }}
+                  className="mobile-nav-link"
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  <Search size={20} style={{ color: '#94a3b8' }} />
-                </TextField.Slot>
-              </TextField.Root>
-            </form>
-
-            {/* NSFW Toggle for Mobile */}
-            <Flex align="center" justify="center" mt="4">
-              <Button
-                variant="ghost"
-                onClick={toggleNsfw}
-                style={{
-                  color: isNsfwEnabled ? '#ef4444' : '#94a3b8',
-                  border: isNsfwEnabled ? '1px solid #ef4444' : '1px solid #334155',
-                  backgroundColor: isNsfwEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(30, 41, 59, 0.9)',
-                  width: '100%',
-                  justifyContent: 'center',
-                  transition: 'all 0.3s ease',
-                  transform: isNsfwEnabled ? 'scale(1.02)' : 'scale(1)',
-                  boxShadow: isNsfwEnabled ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
-                }}
-                className="mobile-nsfw-toggle-btn"
-                title={isNsfwEnabled ? 'Tap to hide NSFW content' : 'Tap to show NSFW content'}
-              >
-                <Flex align="center" gap="2">
-                  <Shield size={20} />
-                  <span>{isNsfwEnabled ? 'Hide NSFW Content' : 'Show NSFW Content'}</span>
+                  <item.icon size={20} />
+                  <span style={{ fontSize: '16px', fontWeight: '500', whiteSpace: 'nowrap' }}>
+                    {item.label}
+                  </span>
                 </Flex>
-              </Button>
-            </Flex>
-          </Container>
-        </Box>
-      )}
+              </Link>
+            ))}
+          </Flex>
+
+          {/* Mobile search */}
+          <form onSubmit={handleSearch}>
+            <TextField.Root
+              placeholder="Search anime..."
+              value={searchQuery}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch(e as any)
+                }
+              }}
+              style={{
+                width: '100%',
+                backgroundColor: 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid #1e293b',
+                borderRadius: '8px'
+              }}
+              className="mobile-search"
+            >
+              <TextField.Slot
+                side="left"
+                style={{ cursor: 'pointer' }}
+                onClick={handleSearch}
+              >
+                <Search size={20} style={{ color: '#94a3b8' }} />
+              </TextField.Slot>
+            </TextField.Root>
+          </form>
+
+          {/* NSFW Toggle for Mobile */}
+          <Flex align="center" justify="center" mt="4">
+            <Button
+              variant="ghost"
+              onClick={toggleNsfw}
+              style={{
+                color: isNsfwEnabled ? '#ef4444' : '#94a3b8',
+                border: isNsfwEnabled ? '1px solid #ef4444' : '1px solid #334155',
+                backgroundColor: isNsfwEnabled ? 'rgba(239, 68, 68, 0.1)' : 'rgba(30, 41, 59, 0.9)',
+                width: '100%',
+                justifyContent: 'center',
+                transition: 'all 0.3s ease',
+                transform: isNsfwEnabled ? 'scale(1.02)' : 'scale(1)',
+                boxShadow: isNsfwEnabled ? '0 0 10px rgba(239, 68, 68, 0.3)' : 'none'
+              }}
+              className="mobile-nsfw-toggle-btn"
+              title={isNsfwEnabled ? 'Tap to hide NSFW content' : 'Tap to show NSFW content'}
+            >
+              <Flex align="center" gap="2">
+                <Shield size={20} />
+                <span>{isNsfwEnabled ? 'Hide NSFW Content' : 'Show NSFW Content'}</span>
+              </Flex>
+            </Button>
+          </Flex>
+        </Container>
+      </Box>
     </Box>
   )
 }
