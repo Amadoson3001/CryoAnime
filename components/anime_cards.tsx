@@ -28,7 +28,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
   const [imageError, setImageError] = React.useState(false)
 
   return (
-    <Link href={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }}>
+    <Link href={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }} className="anime-grid-item">
       <Card
         asChild
         style={{
@@ -48,7 +48,6 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
             src={imageUrl}
             alt={anime.title}
             fill
-            unoptimized
             style={{
               objectFit: 'cover',
               transition: 'transform 0.5s ease',
@@ -56,7 +55,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
               opacity: imageLoaded ? 1 : 0
             }}
             priority={priority}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
             loading={priority ? 'eager' : 'lazy'}

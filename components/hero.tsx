@@ -12,24 +12,29 @@ import {
 } from '@radix-ui/themes'
 
 const Hero = () => {
+  // Single combined animation style block - respects potato-mode via CSS
   const animationStyle = `
     @keyframes bounce {
-      0%, 100% {
-        transform: translateY(0);
-      }
-      50% {
-        transform: translateY(-4px);
-      }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    @keyframes clickAnimation {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
     }
     .bouncing-icon {
       animation: bounce 2s infinite ease-in-out;
     }
     .animated-button {
-      transition: all 0.2s ease-in-out;
+      transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
     }
     .animated-button:hover {
       transform: scale(1.05);
       filter: brightness(1.1);
+    }
+    .animated-button:active {
+      animation: clickAnimation 0.3s ease;
     }
   `
 
@@ -45,16 +50,6 @@ const Hero = () => {
       py={{ initial: '9', sm: '9' }}
     >
       <style>{animationStyle}</style>
-      <style>{`
-        @keyframes clickAnimation {
-          0% { transform: scale(1); }
-          50% { transform: scale(0.95); }
-          100% { transform: scale(1); }
-        }
-        .click-animation {
-          animation: clickAnimation 0.3s ease;
-        }
-      `}</style>
       {/* Enhanced animated background */}
       <Box
         position="absolute"
@@ -193,13 +188,6 @@ const Hero = () => {
                   width: '100%',
                   maxWidth: '200px'
                 }}
-                onClick={(e) => {
-                  const element = e.currentTarget;
-                  element.classList.add('click-animation');
-                  setTimeout(() => {
-                    element.classList.remove('click-animation');
-                  }, 300);
-                }}
               >
                 <Compass size={20} />
                 Explore Anime
@@ -218,13 +206,6 @@ const Hero = () => {
                   minHeight: '44px',
                   width: '100%',
                   maxWidth: '200px'
-                }}
-                onClick={(e) => {
-                  const element = e.currentTarget;
-                  element.classList.add('click-animation');
-                  setTimeout(() => {
-                    element.classList.remove('click-animation');
-                  }, 300);
                 }}
               >
                 <TrendingUp size={20} className="bouncing-icon" />

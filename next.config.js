@@ -6,14 +6,15 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'cdn.myanimelist.net',
                 port: '',
-                pathname: '/images/anime/**',
+                pathname: '/images/**',
             },
         ],
-        // Limit image device sizes to reduce generated URLs
+        // Optimized device sizes for responsive images
         deviceSizes: [640, 750, 828, 1080, 1200, 1920],
-        // Limit image sizes to reduce generated URLs
+        // Image sizes for layout="fill" or specific widths
         imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-        unoptimized: true
+        // Prefer WebP for better compression
+        formats: ['image/webp'],
     },
 }
 

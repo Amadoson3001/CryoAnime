@@ -68,12 +68,11 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
                                 src={imageUrl}
                                 alt={anime.title}
                                 fill
-                                unoptimized
                                 style={{
                                     objectFit: 'cover',
                                     opacity: imageLoaded ? 1 : 0
                                 }}
-                                sizes="60px"
+                                sizes="(max-width: 768px) 90px, 110px"
                                 onLoad={() => setImageLoaded(true)}
                                 onError={() => setImageError(true)}
                             />

@@ -243,3 +243,107 @@ html.potato-mode .anime-header span {
 .hidetools {
   display: none;
 }
+
+/* =========================================
+   PERFORMANCE OPTIMIZATIONS
+   ========================================= */
+
+/* Reduced motion for accessibility - respects user's system preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile-specific optimizations - disable expensive effects */
+@media (max-width: 768px) {
+  .anime-header {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(15, 23, 42, 0.98) !important;
+  }
+
+  .mobile-menu-container {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(15, 23, 42, 0.98) !important;
+  }
+
+  /* Disable hover-based animations on touch devices */
+  .nav-link:hover,
+  .mobile-nav-link:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  .nav-link::before {
+    display: none !important;
+  }
+
+  /* Simplify card interactions on mobile */
+  .anime-card-hover {
+    transform: none !important;
+  }
+}
+
+/* Extended potato-mode: aggressively disable all expensive effects */
+html.potato-mode {
+  /* Global animation/transition disable */
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Disable all blur effects */
+  .anime-header,
+  .mobile-menu-container {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Disable shadows and transforms */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Disable filters */
+  img {
+    filter: none !important;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Disable hover states that don't apply to touch */
+  .nav-link:hover::before,
+  .search-input:focus-within::before {
+    display: none !important;
+  }
+
+  /* Larger touch targets */
+  .nav-link,
+  .mobile-nav-link {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove hover-dependent animations */
+  .animated-button:hover {
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+/* Content visibility optimization for off-screen content */
+.anime-grid-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 400px;
+}
