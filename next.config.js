@@ -71,16 +71,7 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
-  // Static Export configuration for GitHub Pages
-  output: 'export',
-  
-  // GitHub Pages usually deploys to a subpath (e.g., /repo-name/)
-  // Only apply basePath in production
-  basePath: process.env.NODE_ENV === 'production' ? '/CryoAnime' : '',
-  assetPrefix: process.env.NODE_ENV === 'production' ? '/CryoAnime/' : '',
-
   // Apply security headers to all routes
-  // Note: headers() is ignored when output: 'export'
   async headers() {
     return [
       {
@@ -91,8 +82,7 @@ const nextConfig = {
   },
 
   images: {
-    // Standard Next.js Image Optimization doesn't work with static export
-    // unless using a custom loader or setting unoptimized: true
+    // Keep unoptimized to pass through external images from MAL/CDN directly
     unoptimized: true,
     remotePatterns: [
       {
