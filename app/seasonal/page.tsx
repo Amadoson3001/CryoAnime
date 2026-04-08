@@ -80,7 +80,7 @@ const SeasonalPage = () => {
         if (selectedYear && selectedSeason) {
             fetchSeasonalAnimeData(1, false)
         }
-    }, [selectedYear, selectedSeason, isInitialLoad, itemsPerPage])
+    }, [selectedYear, selectedSeason, isInitialLoad, itemsPerPage, fetchSeasonalAnimeData])
 
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages && page !== currentPage) {

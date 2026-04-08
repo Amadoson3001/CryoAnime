@@ -365,11 +365,12 @@ export const fetchTopAnimeForLanding = async (includeNsfw = false): Promise<Anim
    return data
  }
 
-export const fetchAnimeByGenre = async (genreId: number, page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
-  let url = `anime?genres=${genreId}&page=${page}&limit=${limit}`
+export const fetchAnimeByGenre = async (genreIds: number | number[], page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
+  const genresStr = Array.isArray(genreIds) ? genreIds.join(',') : genreIds
+  let url = `anime?genres=${genresStr}&page=${page}&limit=${limit}`
   url = buildSortParams(url, sort, order);
 
-  const response = await fetchFromApi<AnimeResponse>(url, `genre_${genreId}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
+  const response = await fetchFromApi<AnimeResponse>(url, `genre_${genresStr}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
@@ -727,11 +728,20 @@ export const formatScore = (score?: number): string => {
 
 export const formatDate = (dateString?: string): string => {
   if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  const date = new Date(dateString)
+  if (Number.isNaN(date.getTime())) return 'N/A'
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+
+  // Use UTC parts to keep SSR and hydration output identical across time zones.
+  const month = monthNames[date.getUTCMonth()]
+  const day = date.getUTCDate()
+  const year = date.getUTCFullYear()
+
+  return `${month} ${day}, ${year}`
 }
 
 // Rate limiting utility functions

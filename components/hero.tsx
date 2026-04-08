@@ -12,32 +12,6 @@ import {
 } from '@radix-ui/themes'
 
 const Hero = () => {
-  // Single combined animation style block - respects potato-mode via CSS
-  const animationStyle = `
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-    }
-    @keyframes clickAnimation {
-      0% { transform: scale(1); }
-      50% { transform: scale(0.95); }
-      100% { transform: scale(1); }
-    }
-    .bouncing-icon {
-      animation: bounce 2s infinite ease-in-out;
-    }
-    .animated-button {
-      transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
-    }
-    .animated-button:hover {
-      transform: scale(1.05);
-      filter: brightness(1.1);
-    }
-    .animated-button:active {
-      animation: clickAnimation 0.3s ease;
-    }
-  `
-
   return (
     <Box
       style={{
@@ -49,7 +23,6 @@ const Hero = () => {
       }}
       py={{ initial: '9', sm: '9' }}
     >
-      <style>{animationStyle}</style>
       {/* Enhanced animated background */}
       <Box
         position="absolute"
@@ -176,7 +149,7 @@ const Hero = () => {
             align="center"
             mb={{ initial: '6', sm: '9' }}
           >
-            <Link href="/Explore">
+            <Link href="/Explore" prefetch={false}>
               <Button
                 size={{ initial: '3', sm: '3' }}
                 className="animated-button"
@@ -193,7 +166,7 @@ const Hero = () => {
                 Explore Anime
               </Button>
             </Link>
-            <Link href="/trending" passHref>
+            <Link href="/trending" prefetch={false} passHref>
               <Button
                 size={{ initial: '3', sm: '3' }}
                 variant="soft"

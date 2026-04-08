@@ -8,12 +8,12 @@ const isDev = process.env.NODE_ENV === 'development'
 // - YouTube embeds are allowed for anime trailers
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''};
+  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://cdn.jsdelivr.net;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://cdn.myanimelist.net https://img.youtube.com;
+  img-src 'self' data: blob: https://cdn.myanimelist.net https://myanimelist.net https://img.youtube.com https://cdn.jsdelivr.net;
   media-src 'self';
-  connect-src 'self' https://api.jikan.moe https://api.myanimelist.net;
+  connect-src 'self' https://api.jikan.moe https://api.myanimelist.net https://cdn.jsdelivr.net;
   frame-src https://www.youtube.com https://youtube.com;
   frame-ancestors 'none';
   form-action 'self';
@@ -71,7 +71,16 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  // Static Export configuration for GitHub Pages
+  output: 'export',
+  
+  // GitHub Pages usually deploys to a subpath (e.g., /repo-name/)
+  // Only apply basePath in production
+  basePath: process.env.NODE_ENV === 'production' ? '/CryoAnime' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? '/CryoAnime/' : '',
+
   // Apply security headers to all routes
+  // Note: headers() is ignored when output: 'export'
   async headers() {
     return [
       {
@@ -82,10 +91,19 @@ const nextConfig = {
   },
 
   images: {
+    // Standard Next.js Image Optimization doesn't work with static export
+    // unless using a custom loader or setting unoptimized: true
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'cdn.myanimelist.net',
+        port: '',
+        pathname: '/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'myanimelist.net',
         port: '',
         pathname: '/images/**',
       },

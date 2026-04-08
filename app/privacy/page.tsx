@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 
 const PrivacyPage = () => {
-    const currentYear = new Date().getFullYear()
+    const currentYear = new Date().getUTCFullYear()
 
     return (
         <>

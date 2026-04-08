@@ -233,6 +233,35 @@ html.potato-mode .anime-header span {
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
 }
 
+/* Hero CTA animations moved from runtime-injected style to static CSS */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes clickAnimation {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+.bouncing-icon {
+  animation: bounce 2s infinite ease-in-out;
+}
+
+.animated-button {
+  transition: transform 0.2s ease-in-out, filter 0.2s ease-in-out;
+}
+
+.animated-button:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.animated-button:active {
+  animation: clickAnimation 0.3s ease;
+}
+
 .live2d-widget {
   position: fixed !important;
   right: -97rem !important;
@@ -346,4 +375,38 @@ html.potato-mode {
 .anime-grid-item {
   content-visibility: auto;
   contain-intrinsic-size: 0 400px;
+}
+
+.anime-card {
+  transition: transform 0.3s ease;
+}
+
+.anime-card-image {
+  transition: transform 0.5s ease;
+}
+
+.anime-card-overlay {
+  transition: transform 0.35s ease, opacity 0.35s ease;
+  opacity: 0.92;
+  transform: translateY(8px);
+}
+
+.anime-card-synopsis {
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .anime-card:hover .anime-card-image {
+    transform: scale(1.05);
+  }
+
+  .anime-card:hover .anime-card-overlay {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .anime-card:hover .anime-card-synopsis {
+    max-height: 5rem;
+  }
 }

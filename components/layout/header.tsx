@@ -12,7 +12,8 @@ import {
   Heart,
   Shield,
   Calendar,
-  Leaf
+  Leaf,
+  Bookmark
 } from 'lucide-react'
 import {
   Box,
@@ -70,7 +71,8 @@ const Header: React.FC = () => {
       { href: '/seasonal', label: 'Seasonal', icon: Leaf },
       { href: '/movies', label: 'Movies', icon: Heart },
       { href: '/top-rated', label: 'Top Rated', icon: Star },
-      { href: '/schedule', label: 'Schedule', icon: Calendar }
+      { href: '/schedule', label: 'Schedule', icon: Calendar },
+      { href: '/library', label: 'Library', icon: Bookmark }
     ],
     []
   )

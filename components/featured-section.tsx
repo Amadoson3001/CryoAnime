@@ -2,15 +2,15 @@
 import React, { useState, useEffect, memo } from 'react'
 import { AnimeGrid } from './anime_cards'
 import Link from 'next/link'
+import { useShouldSimplify } from '@/lib/usePerformance'
 
-import { fetchTopAnimeForLanding, fetchSeasonalAnimeForLanding, AnimeData, preloadAnimeImages, isNsfwAnime } from '@/lib/api'
+import { fetchTopAnimeForLanding, fetchSeasonalAnimeForLanding, AnimeData, preloadAnimeImages } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
-import { ChevronRight, Trophy, Calendar, Star } from 'lucide-react'
+import { ChevronRight, Trophy, Calendar } from 'lucide-react'
 import {
   Box,
   Container,
   Flex,
-  Grid,
   Text,
   Button,
   Separator
@@ -41,6 +41,7 @@ const getCurrentYearAndSeason = (): { year: number; season: string } => {
 }
 
 const FeaturedSection = () => {
+  const shouldSimplify = useShouldSimplify()
   const [featuredAnime, setFeaturedAnime] = useState<AnimeData[]>([])
   const [seasonalAnime, setSeasonalAnime] = useState<AnimeData[]>([])
   const [loading, setLoading] = useState(true)
@@ -68,7 +69,7 @@ const FeaturedSection = () => {
         setSeasonalAnime(seasonalData)
 
         // Preload images for better performance
-        if (featuredData.length > 0) {
+        if (!shouldSimplify && featuredData.length > 0) {
           preloadAnimeImages([...featuredData, ...seasonalData], 6).catch(() => {
             // Ignore preload errors - not critical for functionality
           })
@@ -84,7 +85,7 @@ const FeaturedSection = () => {
     }
 
     loadFeaturedAnime()
-  }, [])
+  }, [shouldSimplify])
 
 
 
@@ -129,6 +130,7 @@ const FeaturedSection = () => {
               </Flex>
               <Link
                 href={section.title === 'Top Rated Anime' ? '/top-rated' : '/trending'}
+                prefetch={false}
                 passHref
               >
                 <Button variant="ghost" size="2" style={{ color: '#3b82f6' }}>
@@ -174,7 +176,7 @@ const FeaturedSection = () => {
             <Text as="p" size="4" mb="6" style={{ color: '#cbd5e1' }}>
               Join thousands of anime fans and discover your next favorite series.
             </Text>
-            <Link href="/Explore" passHref>
+            <Link href="/Explore" prefetch={false} passHref>
               <Button
                 size="3"
                 style={{

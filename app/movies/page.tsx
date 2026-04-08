@@ -56,7 +56,7 @@ const MoviesPage = () => {
         } finally {
             setLoading(false)
         }
-    }, [sortBy, sortOrder])
+    }, [sortBy, sortOrder, isInitialLoad])
 
     // Initial load
     useEffect(() => {

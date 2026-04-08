@@ -12,7 +12,7 @@ import {
 } from '@radix-ui/themes'
 
 const Footer = () => {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getUTCFullYear()
 
   const footerLinks = {
     explore: [

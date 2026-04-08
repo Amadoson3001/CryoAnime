@@ -1,8 +1,8 @@
 'use client'
 import React, { memo } from 'react'
 import Image from 'next/image'
-import { Star, Calendar, Clock, PlayCircle } from 'lucide-react'
-import { AnimeData, formatScore, formatDate, getImageUrl } from '@/lib/api'
+import { Star, Calendar } from 'lucide-react'
+import { AnimeData, formatScore, getImageUrl } from '@/lib/api'
 import Link from 'next/link'
 import {
   Box,
@@ -10,10 +10,7 @@ import {
   Flex,
   Grid,
   Text,
-  Badge,
-  Skeleton,
-  Inset,
-  Button
+  Skeleton
 } from '@radix-ui/themes'
 
 interface AnimeCardProps {
@@ -23,89 +20,50 @@ interface AnimeCardProps {
 
 const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
   const imageUrl = getImageUrl(anime)
-  const [isHovered, setIsHovered] = React.useState(false)
-  const [imageLoaded, setImageLoaded] = React.useState(false)
-  const [imageError, setImageError] = React.useState(false)
 
   return (
-    <Link href={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }} className="anime-grid-item">
+    <Link
+      href={`/anime/${anime.mal_id}`}
+      prefetch={false}
+      style={{ textDecoration: 'none' }}
+      className="anime-grid-item"
+    >
       <Card
         asChild
+        className="anime-card"
         style={{
           position: 'relative',
           height: '400px',
           overflow: 'hidden',
           backgroundColor: '#1e293b',
           border: '1px solid #334155',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease'
+          cursor: 'pointer'
         }}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <div>
           <Image
             src={imageUrl}
             alt={anime.title}
             fill
+            className="anime-card-image"
             style={{
-              objectFit: 'cover',
-              transition: 'transform 0.5s ease',
-              transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-              opacity: imageLoaded ? 1 : 0
+              objectFit: 'cover'
             }}
             priority={priority}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1536px) 20vw, 16vw"
+            quality={65}
             loading={priority ? 'eager' : 'lazy'}
           />
-          {/* Loading placeholder */}
-          {!imageLoaded && !imageError && (
-            <Box
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: '#334155',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Text size="2" style={{ color: '#64748b' }}>
-                Loading...
-              </Text>
-            </Box>
-          )}
-          {/* Error placeholder */}
-          {imageError && (
-            <Box
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: '#334155',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Text size="2" style={{ color: '#64748b' }}>
-                Image not available
-              </Text>
-            </Box>
-          )}
           <Box
             position="absolute"
             bottom="0"
             left="0"
             right="0"
             p="3"
+            className="anime-card-overlay"
             style={{
               background: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0.7) 70%, transparent 100%)',
-              color: 'white',
-              transition: 'all 0.5s linear',
-              opacity: isHovered ? 1 : 0.9,
-              transform: isHovered ? 'translateY(0)' : 'translateY(10px)'
+              color: 'white'
             }}
           >
             <Text as="p" size="3" weight="bold" truncate>
@@ -128,10 +86,9 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
               size="1"
               color="gray"
               mt="2"
+              className="anime-card-synopsis"
               style={{
-                height: isHovered ? 'auto' : '0',
-                overflow: 'hidden',
-                transition: 'height 0.3s ease'
+                overflow: 'hidden'
               }}
             >
               {anime.synopsis
@@ -241,7 +198,7 @@ const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error
       gap={{ initial: '4', md: '6' }}
     >
       {animeList.map((anime, index) => (
-        <MemoizedAnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 6} />
+        <MemoizedAnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 2} />
       ))}
     </Grid>
   )
