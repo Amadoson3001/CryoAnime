@@ -392,7 +392,25 @@ export const fetchGenres = async (): Promise<GenresResponse> => {
 }
 
 export const searchAnime = async (query: string, page = 1, limit = 20, includeNsfw = false): Promise<AnimeResponse> => {
-  const response = await fetchFromApi<AnimeResponse>(`anime?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`, `search_${query}_${page}_${limit}`)
+  // Input validation & sanitization
+  if (typeof query !== 'string') {
+    throw new Error('Search query must be a string')
+  }
+  // Trim and limit length to prevent excessively large requests
+  const sanitizedQuery = query.trim().slice(0, 200)
+  // Strip control characters and only allow printable unicode
+  const safeQuery = sanitizedQuery.replace(/[\x00-\x1F\x7F]/g, '')
+  if (!safeQuery) {
+    throw new Error('Search query cannot be empty')
+  }
+  // Clamp page & limit to safe ranges
+  const safePage = Math.max(1, Math.min(Math.floor(page), 100))
+  const safeLimit = Math.max(1, Math.min(Math.floor(limit), 25))
+
+  const response = await fetchFromApi<AnimeResponse>(
+    `anime?q=${encodeURIComponent(safeQuery)}&page=${safePage}&limit=${safeLimit}`,
+    `search_${safeQuery}_${safePage}_${safeLimit}`
+  )
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
@@ -734,9 +752,13 @@ export const resetRateLimitTimer = (): void => {
 }
 
 export const setCustomRequestDelay = (delayMs: number): void => {
-  // Allow customization of request delay for different environments
-  // This is a global change that affects all API calls
-  (global as any).CUSTOM_REQUEST_DELAY = delayMs
+  // Validate the delay value to prevent abuse
+  if (typeof delayMs !== 'number' || delayMs < 0 || delayMs > 30000) {
+    throw new Error('Custom request delay must be a number between 0 and 30000ms')
+  }
+  // Note: This only affects the module-level variable in this module
+  // It does not modify global state
+  console.warn('setCustomRequestDelay is deprecated and has no effect. Configure via environment variables instead.')
 }
 
 // Schedule API functions

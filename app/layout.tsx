@@ -20,6 +20,25 @@ export const metadata: Metadata = {
   icons: {
     icon: '/favicon.ico',
   },
+  // Security/SEO meta
+  robots: {
+    index: true,
+    follow: true,
+    nocache: false,
+  },
+  // Prevent phone number detection
+  formatDetection: {
+    telephone: false,
+    address: false,
+    email: false,
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'CryoAnime',
+    title: 'CryoAnime - Discover Your Next Favorite Anime',
+    description: 'Explore thousands of anime series, movies, and OVAs with CryoAnime.',
+  },
 }
 
 export default function RootLayout({
