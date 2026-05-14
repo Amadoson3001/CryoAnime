@@ -8,6 +8,13 @@ This project is suitable as:
 - A reference for building optimized, API-driven Next.js applications
 - A portfolio-grade showcase of UI/UX, caching, and real-world data integration
 
+<p align="center">
+  <a href="ScreenShots/Screenshot 2026-05-14 172050.png"><img src="ScreenShots/Screenshot 2026-05-14 172050.png" width="400"></a>
+  <a href="ScreenShots/Screenshot 2026-05-14 172138.png"><img src="ScreenShots/Screenshot 2026-05-14 172138.png" width="400"></a>
+  <a href="ScreenShots/Screenshot 2026-05-14 172229.png"><img src="ScreenShots/Screenshot 2026-05-14 172229.png" width="400"></a>
+  <a href="ScreenShots/Screenshot 2026-05-14 172425.png"><img src="ScreenShots/Screenshot 2026-05-14 172425.png" width="400"></a>
+</p>
+
 ## Features
 
 - Modern anime discovery experience:
