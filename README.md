@@ -8,12 +8,42 @@ This project is suitable as:
 - A reference for building optimized, API-driven Next.js applications
 - A portfolio-grade showcase of UI/UX, caching, and real-world data integration
 
-<p align="center">
-  <a href="ScreenShots/Screenshot 2026-05-14 172050.png"><img src="ScreenShots/Screenshot 2026-05-14 172050.png" width="400"></a>
-  <a href="ScreenShots/Screenshot 2026-05-14 172138.png"><img src="ScreenShots/Screenshot 2026-05-14 172138.png" width="400"></a>
-  <a href="ScreenShots/Screenshot 2026-05-14 172229.png"><img src="ScreenShots/Screenshot 2026-05-14 172229.png" width="400"></a>
-  <a href="ScreenShots/Screenshot 2026-05-14 172425.png"><img src="ScreenShots/Screenshot 2026-05-14 172425.png" width="400"></a>
-</p>
+## Gallery
+
+| Home Page | Explore by Season |
+|:-:|:-:|
+| <img src="ScreenShots/Screenshot 2026-05-14 172050.png" width="450"> | <img src="ScreenShots/Screenshot 2026-05-14 172138.png" width="450"> |
+| **Anime Details** | **Library** |
+| <img src="ScreenShots/Screenshot 2026-05-14 172229.png" width="450"> | <img src="ScreenShots/Screenshot 2026-05-14 172425.png" width="450"> |
+
+<details>
+<summary>Click to expand / collapse full-size screenshots</summary>
+
+### Home Page
+
+<picture>
+  <img src="ScreenShots/Screenshot 2026-05-14 172050.png" alt="Home page" width="960">
+</picture>
+
+### Explore by Season
+
+<picture>
+  <img src="ScreenShots/Screenshot 2026-05-14 172138.png" alt="Anime details" width="960">
+</picture>
+
+### Anime Details
+
+<picture>
+  <img src="ScreenShots/Screenshot 2026-05-14 172229.png" alt="Explore by genre" width="960">
+</picture>
+
+### Library
+
+<picture>
+  <img src="ScreenShots/Screenshot 2026-05-14 172425.png" alt="Search results" width="960">
+</picture>
+
+</details>
 
 ## Features
 
