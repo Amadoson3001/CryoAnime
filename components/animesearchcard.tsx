@@ -2,7 +2,7 @@
 import React from 'react'
 import Image from 'next/image'
 import { Star, Calendar, Clock, PlayCircle, Search, X } from 'lucide-react'
-import { AnimeData, formatScore, formatDate, getImageUrl } from '@/lib/api'
+import { AnimeData, formatScore, formatDate, getOptimizedImageUrl } from '@/lib/api'
 import Link from 'next/link'
 import {
     Box,
@@ -34,7 +34,7 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
     const [imageLoaded, setImageLoaded] = React.useState(false)
     const [imageError, setImageError] = React.useState(false)
 
-    const imageUrl = getImageUrl(anime)
+    const imageUrl = getOptimizedImageUrl(anime)
 
     return (
         <Link href={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }}>
@@ -183,8 +183,8 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
                                     lineHeight: '1.3'
                                 }}
                             >
-                                {anime.synopsis.length > 100
-                                    ? `${anime.synopsis.substring(0, 100)}...`
+                                {(anime.synopsis?.length ?? 0) > 100
+                                    ? `${anime.synopsis?.substring(0, 100)}...`
                                     : anime.synopsis}
                             </Text>
                         )}

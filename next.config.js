@@ -8,12 +8,12 @@ const isDev = process.env.NODE_ENV === 'development'
 // - YouTube embeds are allowed for anime trailers
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://cdn.jsdelivr.net;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  script-src 'self' ${isDev ? "'unsafe-inline' 'unsafe-eval'" : ''} https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fastly.jsdelivr.net;
   font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://cdn.myanimelist.net https://myanimelist.net https://img.youtube.com https://cdn.jsdelivr.net;
+  img-src 'self' data: blob: https://cdn.myanimelist.net https://myanimelist.net https://img.youtube.com https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
   media-src 'self';
-  connect-src 'self' https://api.jikan.moe https://api.myanimelist.net https://cdn.jsdelivr.net;
+  connect-src 'self' https://api.jikan.moe https://api.myanimelist.net https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
   frame-src https://www.youtube.com https://youtube.com;
   frame-ancestors 'none';
   form-action 'self';

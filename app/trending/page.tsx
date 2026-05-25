@@ -5,34 +5,10 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import Pagination from '@/components/Pagination'
 import { AnimeGrid } from '@/components/anime_cards'
-import { fetchSeasonalAnime, AnimeData } from '@/lib/api'
+import { fetchSeasonalAnime, AnimeData, getCurrentSeasonInfo } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
 import { Box, Container, Flex, Text, Heading, Button } from '@radix-ui/themes'
-import { TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'
-
-// Helper function to get the current season based on month
-const getCurrentSeason = (month: number): string => {
-  if (month >= 3 && month <= 5) return 'spring'
-  if (month >= 6 && month <= 8) return 'summer'
-  if (month >= 9 && month <= 11) return 'fall'
-  return 'winter'
-}
-
-// Helper function to get the current year and season
-const getCurrentYearAndSeason = (): { year: number; season: string } => {
-  const now = new Date()
-  const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11
-  const currentYear = now.getFullYear()
-
-  // For December, January, February - check if it's early in the year to show previous year's winter
-  if (currentMonth === 1 || currentMonth === 2) {
-    return { year: currentYear, season: 'winter' }
-  } else if (currentMonth === 12) {
-    return { year: currentYear + 1, season: 'winter' }
-  }
-
-  return { year: currentYear, season: getCurrentSeason(currentMonth) }
-}
+import { TrendingUp } from 'lucide-react'
 
 const TrendingPage = () => {
   const [animeList, setAnimeList] = useState<AnimeData[]>([])
@@ -50,7 +26,7 @@ const TrendingPage = () => {
 
   // Get current year and season on component mount
   useEffect(() => {
-    const { year, season } = getCurrentYearAndSeason()
+    const { year, season } = getCurrentSeasonInfo()
     setCurrentYear(year)
     setCurrentSeason(season)
   }, [])
@@ -273,60 +249,6 @@ const TrendingPage = () => {
             }} />
           </div>
         </div>
-
-        <style jsx global>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-25px) rotate(180deg); }
-          }
-
-          @keyframes slideInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-
-          @keyframes pulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: 1;
-            }
-            50% {
-              transform: scale(1.1);
-              opacity: 0.8;
-            }
-          }
-
-          @keyframes wave {
-            0%, 60%, 100% {
-              transform: scaleY(1);
-            }
-            30% {
-              transform: scaleY(1.8);
-            }
-          }
-
-          @keyframes scalePulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: 0.6;
-            }
-            50% {
-              transform: scale(1.3);
-              opacity: 1;
-            }
-          }
-        `}</style>
       </div>
     )
   }
@@ -341,47 +263,6 @@ const TrendingPage = () => {
           paddingTop: '5rem'
         }}
       >
-        <style jsx global>{`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .page-enter {
-            animation: slideInFromBottom 0.8s ease-out;
-          }
-
-          @keyframes slideInFromBottom {
-            from {
-              opacity: 0;
-              transform: translateY(50px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .anime-grid-enter {
-            animation: fadeInGrid 0.4s ease-out 0.2s both;
-          }
-
-          @keyframes fadeInGrid {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
-        `}</style>
-
         <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
           {/* Page Header */}
           <Box mb="8" style={{ textAlign: 'center' }}>
@@ -412,7 +293,7 @@ const TrendingPage = () => {
           )}
 
           {/* Anime Grid with Animation */}
-          <Box className="anime-grid-enter">
+          <Box className="anime-grid-enter" key={`grid-${currentPage}`}>
             <AnimeGrid
               animeList={animeList}
               loading={loading}

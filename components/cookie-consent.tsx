@@ -35,7 +35,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
         // Clear any existing NSFW preference
         localStorage.removeItem('nsfw_enabled')
         // Remove cookie if it exists
-        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; Secure; SameSite=Lax'
         setShow(false)
         onReject?.()
     }
@@ -45,7 +45,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
         localStorage.setItem('cookie_consent_choice', 'necessary_only')
         // Clear any existing NSFW preference since it's not necessary
         localStorage.removeItem('nsfw_enabled')
-        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; Secure; SameSite=Lax'
         setShow(false)
     }
 
@@ -81,7 +81,11 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
                         <Button
                             variant="ghost"
                             size="2"
-                            onClick={() => setShow(false)}
+                            onClick={() => {
+                                localStorage.setItem('cookie_consent_given', 'true')
+                                localStorage.setItem('cookie_consent_choice', 'dismissed')
+                                setShow(false)
+                            }}
                             style={{
                                 marginLeft: 'auto',
                                 color: '#94a3b8',
@@ -193,20 +197,6 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
                     </Flex>
                 </Flex>
             </Card>
-
-            {/* Animation styles */}
-            <style jsx>{`
-                @keyframes slideUp {
-                    from {
-                        transform: translateY(100px);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateY(0);
-                        opacity: 1;
-                    }
-                }
-            `}</style>
         </Box>
     )
 }

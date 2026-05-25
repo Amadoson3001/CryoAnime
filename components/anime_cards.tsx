@@ -2,7 +2,7 @@
 import React, { memo } from 'react'
 import Image from 'next/image'
 import { Star, Calendar } from 'lucide-react'
-import { AnimeData, formatScore, getImageUrl } from '@/lib/api'
+import { AnimeData, formatScore, getOptimizedImageUrl } from '@/lib/api'
 import Link from 'next/link'
 import {
   Box,
@@ -19,7 +19,7 @@ interface AnimeCardProps {
 }
 
 const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
-  const imageUrl = getImageUrl(anime)
+  const imageUrl = getOptimizedImageUrl(anime)
 
   return (
     <Link

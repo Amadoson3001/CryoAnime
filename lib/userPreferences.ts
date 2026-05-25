@@ -45,10 +45,10 @@ export const setNsfwPreference = (enabled: boolean): void => {
     if (consentChoice === 'accepted') {
       const expiry = new Date()
       expiry.setDate(expiry.getDate() + 30)
-      document.cookie = `${NSFW_PREFERENCE_KEY}=${enabled}; expires=${expiry.toUTCString()}; path=/`
+      document.cookie = `${NSFW_PREFERENCE_KEY}=${enabled}; expires=${expiry.toUTCString()}; path=/; Secure; SameSite=Lax`
     } else if (consentChoice === 'rejected' || consentChoice === 'necessary_only') {
       // Clear cookie if it exists
-      document.cookie = `${NSFW_PREFERENCE_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`
+      document.cookie = `${NSFW_PREFERENCE_KEY}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; Secure; SameSite=Lax`
     }
   }
 }

@@ -6,7 +6,7 @@ import Pagination from '@/components/Pagination'
 import { fetchTopAnime, AnimeData } from '@/lib/api'
 import { AnimeGrid } from '@/components/anime_cards'
 import { getNsfwPreference } from '@/lib/userPreferences'
-import { Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Star } from 'lucide-react'
 import {
     Container,
     Flex,
@@ -184,40 +184,6 @@ const TopRatedPage = () => {
                         />
                     </div>
                 </div>
-
-                <style jsx global>{`
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-20px) rotate(180deg); }
-                    }
-
-                    @keyframes slideInUp {
-                        from {
-                            opacity: 0;
-                            transform: translateY(30px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-
-                    @keyframes fadeIn {
-                        from { opacity: 0; }
-                        to { opacity: 1; }
-                    }
-
-                    @keyframes spin {
-                        from { transform: rotate(0deg); }
-                        to { transform: rotate(360deg); }
-                    }
-
-                    @keyframes loadingBar {
-                        0% { width: 0%; }
-                        50% { width: 100%; }
-                        100% { width: 0%; }
-                    }
-                `}</style>
             </div>
         )
     }
@@ -232,47 +198,6 @@ const TopRatedPage = () => {
                     paddingTop: '5rem'
                 }}
             >
-                <style jsx global>{`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .page-enter {
-            animation: slideInFromBottom 0.8s ease-out;
-          }
-
-          @keyframes slideInFromBottom {
-            from {
-              opacity: 0;
-              transform: translateY(50px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .anime-grid-enter {
-            animation: fadeInGrid 0.4s ease-out 0.2s both;
-          }
-
-          @keyframes fadeInGrid {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
-        `}</style>
-
                 <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>
@@ -303,7 +228,7 @@ const TopRatedPage = () => {
                     )}
 
                     {/* Anime Grid with Animation */}
-                    <Box className="anime-grid-enter">
+                    <Box className="anime-grid-enter" key={`grid-${currentPage}`}>
                         <AnimeGrid
                             animeList={animeList}
                             loading={loading}

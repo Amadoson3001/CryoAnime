@@ -143,56 +143,7 @@ export default function Loading() {
                 </div>
             </div>
 
-            <style dangerouslySetInnerHTML={{ __html: `
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px) rotate(0deg); }
-                    50% { transform: translateY(-20px) rotate(180deg); }
-                }
-
-                @keyframes slideInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(30px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-
-                @keyframes bounce {
-                    0%, 20%, 50%, 80%, 100% {
-                        transform: translateY(0);
-                    }
-                    40% {
-                        transform: translateY(-10px);
-                    }
-                    60% {
-                        transform: translateY(-5px);
-                    }
-                }
-
-                @keyframes pulse {
-                    0%, 80%, 100% {
-                        opacity: 0.3;
-                        transform: scale(1);
-                    }
-                    40% {
-                        opacity: 1;
-                        transform: scale(1.2);
-                    }
-                }
-            ` }} />
+            {/* Keyframes are defined in globals.css */}
         </div>
     )
 }

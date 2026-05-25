@@ -96,6 +96,7 @@ const PrivacyPage = () => {
                                     </Heading>
                                     <ul style={{ color: '#cbd5e1', lineHeight: '1.6', paddingLeft: '1.5rem' }}>
                                         <li><strong>NSFW Content Preference:</strong> Your choice to view or hide NSFW content, stored locally in your browser</li>
+                                        <li><strong>Favorites & Watchlist:</strong> Your saved anime lists, stored locally in your browser</li>
                                         <li><strong>Cache Data:</strong> Anime information temporarily cached for better performance</li>
                                     </ul>
                                 </Box>
@@ -204,20 +205,6 @@ const PrivacyPage = () => {
                 </Container>
             </main>
             <Footer />
-
-            {/* Custom animations */}
-            <style jsx>{`
-                @keyframes fadeInUp {
-                    from {
-                        transform: translateY(30px);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateY(0);
-                        opacity: 1;
-                    }
-                }
-            `}</style>
         </>
     )
 }

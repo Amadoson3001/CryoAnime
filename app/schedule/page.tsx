@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { AnimeCard } from '@/components/anime_cards'
@@ -84,7 +83,7 @@ const SchedulePage = () => {
                     const batch = items.slice(i, i + batchSize)
                     const batchPromises = batch.map(async daySchedule => {
                         const cacheKey = `schedule_${daySchedule.day}_${includeNsfw}`
-                        const cachedData = getCache(cacheKey)
+                        const cachedData = getCache<AnimeData[]>(cacheKey)
 
                         if (cachedData) {
                             return {
@@ -196,19 +195,12 @@ const SchedulePage = () => {
                                         height: '100%',
                                         backgroundColor: '#3b82f6',
                                         borderRadius: '2px',
-                                        animation: 'loading 2s ease-in-out infinite'
+                                        animation: 'loadingProgress 2s ease-in-out infinite'
                                     }} />
                                 </div>
                             </Box>
                         </Box>
                     </Container>
-                    <style jsx global>{`
-                        @keyframes loading {
-                            0% { transform: translateX(-100%); }
-                            50% { transform: translateX(0%); }
-                            100% { transform: translateX(100%); }
-                        }
-                    `}</style>
                 </main>
                 <Footer />
             </>
@@ -225,27 +217,6 @@ const SchedulePage = () => {
                     paddingTop: '5rem'
                 }}
             >
-                <style jsx global>{`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .page-enter {
-            animation: fadeInUp 0.6s ease-out;
-          }
-
-          .anime-grid-enter {
-            animation: fadeInUp 0.4s ease-out 0.2s both;
-          }
-        `}</style>
-
                 <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>

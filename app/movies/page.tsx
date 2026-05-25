@@ -12,11 +12,10 @@ import {
     Flex,
     Box,
     Text,
-    Select,
     Button,
     DropdownMenu
 } from '@radix-ui/themes'
-import { ArrowLeft, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 
 const MoviesPage = () => {
     const [animeList, setAnimeList] = useState<AnimeData[]>([])
@@ -74,85 +73,8 @@ const MoviesPage = () => {
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages && page !== currentPage) {
             fetchMoviesData(page, sortBy, sortOrder)
-            // Smooth scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' })
         }
-    }
-
-    // Render pagination
-    const renderPagination = () => {
-        if (totalPages <= 1) return null
-
-        const pages = []
-        const maxVisiblePages = 5
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-        // Adjust start page if we're near the end
-        if (endPage - startPage + 1 < maxVisiblePages) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1)
-        }
-
-        // Previous button
-        pages.push(
-            <Button
-                key="prev"
-                variant="soft"
-                disabled={currentPage === 1 || loading}
-                onClick={() => handlePageChange(currentPage - 1)}
-                style={{
-                    backgroundColor: currentPage === 1 ? '#1e293b' : '#3b82f6',
-                    color: currentPage === 1 ? '#64748b' : 'white',
-                    border: '1px solid #334155',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
-                }}
-            >
-                <ArrowLeft size={16} />
-                Previous
-            </Button>
-        )
-
-        // Page numbers
-        for (let i = startPage; i <= endPage; i++) {
-            pages.push(
-                <Button
-                    key={i}
-                    variant={currentPage === i ? "solid" : "soft"}
-                    onClick={() => handlePageChange(i)}
-                    disabled={loading}
-                    style={{
-                        backgroundColor: currentPage === i ? '#3b82f6' : '#1e293b',
-                        color: currentPage === i ? 'white' : '#cbd5e1',
-                        border: '1px solid #334155',
-                        minWidth: '40px',
-                        cursor: loading ? 'not-allowed' : 'pointer'
-                    }}
-                >
-                    {i}
-                </Button>
-            )
-        }
-
-        // Next button
-        pages.push(
-            <Button
-                key="next"
-                variant="soft"
-                disabled={currentPage === totalPages || !hasNextPage || loading}
-                onClick={() => handlePageChange(currentPage + 1)}
-                style={{
-                    backgroundColor: (currentPage === totalPages || !hasNextPage) ? '#1e293b' : '#3b82f6',
-                    color: (currentPage === totalPages || !hasNextPage) ? '#64748b' : 'white',
-                    border: '1px solid #334155',
-                    cursor: (currentPage === totalPages || !hasNextPage) ? 'not-allowed' : 'pointer'
-                }}
-            >
-                Next
-                <ArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
-            </Button>
-        )
-
-        return pages
     }
 
     // Full-page loading screen
@@ -345,63 +267,6 @@ const MoviesPage = () => {
                         }} />
                     </div>
                 </div>
-
-                <style jsx global>{`
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-20px) rotate(180deg); }
-                    }
-
-                    @keyframes slideInUp {
-                        from {
-                            opacity: 0;
-                            transform: translateY(30px);
-                        }
-                        to {
-                            opacity: 1;
-                            transform: translateY(0);
-                        }
-                    }
-
-                    @keyframes fadeIn {
-                        from { opacity: 0; }
-                        to { opacity: 1; }
-                    }
-
-                    @keyframes bounce {
-                        0%, 20%, 50%, 80%, 100% {
-                            transform: translateY(0);
-                        }
-                        40% {
-                            transform: translateY(-8px);
-                        }
-                        60% {
-                            transform: translateY(-4px);
-                        }
-                    }
-
-                    @keyframes filmStrip {
-                        0%, 100% {
-                            opacity: 0.3;
-                            transform: scaleY(1);
-                        }
-                        50% {
-                            opacity: 1;
-                            transform: scaleY(1.2);
-                        }
-                    }
-
-                    @keyframes dots {
-                        0%, 80%, 100% {
-                            opacity: 0.3;
-                            transform: scale(1);
-                        }
-                        40% {
-                            opacity: 1;
-                            transform: scale(1.3);
-                        }
-                    }
-                `}</style>
             </div>
         )
     }
@@ -410,7 +275,7 @@ const MoviesPage = () => {
         <>
             <Header />
             <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-                <Container size="4" px="4" py={{ initial: '12', md: '10' }}>
+                <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>
                         <h1 style={{
@@ -495,7 +360,7 @@ const MoviesPage = () => {
                     )}
 
                     {/* Anime Grid */}
-                    <Box>
+                    <Box className="anime-grid-enter" key={`grid-${currentPage}`}>
                         <AnimeGrid
                             animeList={animeList}
                             loading={loading}

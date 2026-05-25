@@ -24,35 +24,35 @@ const FAQPage = () => {
   const faqData = [
     {
       question: "What is CryoAnime?",
-      answer: "CryoAnime is a comprehensive anime discovery platform that helps you find, track, and enjoy your favorite anime series and movies. We provide detailed information, ratings, schedules, and recommendations to enhance your anime watching experience."
+      answer: "CryoAnime is a comprehensive anime discovery platform that helps you find and explore anime series, movies, and OVAs. We provide detailed information, ratings, schedules, and genre-based browsing to enhance your anime watching experience."
     },
     {
       question: "Is CryoAnime free to use?",
-      answer: "Yes, CryoAnime is completely free to use. We believe anime fans worldwide should have access to quality information and tracking tools without any cost. We may introduce premium features in the future, but our core service will always remain free."
+      answer: "Yes, CryoAnime is completely free to use. We believe anime fans worldwide should have access to quality information and discovery tools without any cost."
     },
     {
       question: "How often is the anime data updated?",
-      answer: "Our anime database is updated daily with the latest information from reliable sources. New releases, schedule changes, and episode information are refreshed every 24 hours to ensure you have the most current data."
+      answer: "Our anime data comes from the Jikan API (MyAnimeList), which is updated regularly. We cache data locally to improve performance, and the cache refreshes automatically."
     },
     {
-      question: "Can I track my anime watching progress?",
-      answer: "Yes! Our tracking feature allows you to create a personalized watchlist, mark episodes as watched, and track your progress through different series. You can also set reminders for upcoming episodes and receive notifications."
+      question: "Can I save my favorite anime?",
+      answer: "Yes! You can add anime to your Favorites or Watchlist. These are stored locally in your browser, so they persist across sessions without requiring an account."
     },
     {
-      question: "How do I report incorrect information?",
-      answer: "If you find any incorrect information on our site, you can report it using the 'Report Issue' button available on each anime page. Our moderation team reviews all reports and makes corrections as needed."
+      question: "How does the NSFW content filter work?",
+      answer: "CryoAnime includes an NSFW toggle in the header. When disabled, anime with mature content ratings (Hentai, Ecchi) are filtered out of all listings. Your preference is saved locally."
     },
     {
-      question: "Do you have mobile apps?",
-      answer: "Currently, we offer a fully responsive web experience that works great on mobile devices. We're planning to launch dedicated iOS and Android apps in the near future. Stay tuned for updates!"
+      question: "Where does the anime data come from?",
+      answer: "All anime information is fetched from the Jikan API, which is a free, open-source API for MyAnimeList data. We do not host or store any anime content ourselves."
     },
     {
-      question: "How can I contact support?",
-      answer: "You can reach our support team through the contact form on our website or by emailing support@cryoanime.com. We typically respond to all inquiries within 24-48 hours."
+      question: "How can I report incorrect information?",
+      answer: "Since our data comes from MyAnimeList via the Jikan API, incorrect information should be reported directly to MyAnimeList. Our data reflects their database."
     },
     {
       question: "Can I contribute to the platform?",
-      answer: "Absolutely! We welcome contributions from the anime community. You can help by submitting reviews, creating recommendations, or reporting issues. For developers, our platform is open-source, and you can contribute on GitHub."
+      answer: "Absolutely! CryoAnime is open-source. You can contribute by reporting issues or submitting code improvements on our GitHub repository."
     }
   ]
 
@@ -122,7 +122,7 @@ const FAQPage = () => {
         </Box>
 
         {/* FAQ Section */}
-        <Container size="3" px="4" py="8">
+        <Container size="3" px="4" py="8" className="page-enter">
           <Box style={{ maxWidth: '800px', margin: '0 auto' }}>
             <Accordion.Root
               type="single"
@@ -228,7 +228,7 @@ const FAQPage = () => {
                   e.currentTarget.style.transform = 'translateY(0)'
                   e.currentTarget.style.boxShadow = 'none'
                 }}
-                onClick={() => window.location.href = '/contact'}
+                onClick={() => window.location.href = '/about'}
               >
                 Contact Support
               </button>

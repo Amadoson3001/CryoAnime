@@ -30,7 +30,7 @@ export function usePerformance(): PerformanceInfo {
       // Detect low-end device via hardware concurrency and device memory
       const hardwareConcurrency = navigator.hardwareConcurrency || 4
       const deviceMemory = (navigator as any).deviceMemory || 4
-      const isLowEnd = hardwareConcurrency <= 4 || deviceMemory <= 2
+      const isLowEnd = (hardwareConcurrency < 4 && deviceMemory <= 4) || deviceMemory <= 2
 
       // Check reduced motion preference
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches

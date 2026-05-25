@@ -2,22 +2,42 @@ import React from 'react'
 import Image from 'next/image'
 import { Metadata } from 'next'
 import Link from 'next/link'
-import { 
-    fetchAnimeById, 
-    fetchAnimeCharacters, 
-    getImageUrl, 
-    formatScore, 
-    formatDate 
+import {
+    fetchAnimeById,
+    fetchAnimeCharacters,
+    getOptimizedImageUrl,
+    formatScore,
+    formatDate,
+    CharacterWithRole
 } from '@/lib/api'
-import { 
-    ArrowLeft, 
-    Star, 
-    PlayCircle, 
-    Users 
+import {
+    ArrowLeft,
+    Star,
+    PlayCircle,
+    Users,
+    Tv,
+    Globe,
+    Music,
+    Film,
+    ExternalLink,
+    Info,
+    Calendar,
+    Clock,
+    Award,
+    Hash,
+    TrendingUp,
+    Eye,
+    Heart,
+    Building2,
+    Mic,
+    Radio,
+    BookOpen,
+    Link as LinkIcon,
+    Disc
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import CharacterCard from '@/components/CharacterCard'
+import CharacterGrid from '@/components/CharacterGrid'
 import AnimeSynopsis from '@/components/anime/AnimeSynopsis'
 import AnimeActionButtons from '@/components/anime/AnimeActionButtons'
 import {
@@ -35,19 +55,22 @@ interface PageProps {
     params: Promise<{ id: string }>
 }
 
-// Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { id } = await params
+    const parsedId = parseInt(id, 10)
+    if (isNaN(parsedId) || parsedId <= 0) {
+        return { title: 'Invalid Anime ID - CryoAnime' }
+    }
     try {
-        const response = await fetchAnimeById(parseInt(id))
+        const response = await fetchAnimeById(parsedId)
         const anime = response.data
-        
+
         if (!anime) return { title: 'Anime Not Found - CryoAnime' }
-        
+
         const title = anime.title_english || anime.title
         const description = anime.synopsis?.substring(0, 160) || `Learn everything about ${title} on CryoAnime.`
-        const imageUrl = getImageUrl(anime)
-        
+        const imageUrl = getOptimizedImageUrl(anime)
+
         return {
             title: `${title} - CryoAnime`,
             description,
@@ -71,16 +94,47 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function AnimeDetailsPage({ params }: PageProps) {
     const { id } = await params
-    const animeId = parseInt(id)
-    
-    // Fetch data in parallel on the server
+    const animeId = parseInt(id, 10)
+
+    if (isNaN(animeId) || animeId <= 0) {
+        return (
+            <>
+                <Header />
+                <main style={{ backgroundColor: '#0f172a', minHeight: '100vh' }}>
+                    <Container size="4" px="4" py="8">
+                        <Box style={{ textAlign: 'center' }} py="12">
+                            <Box
+                                style={{
+                                    backgroundColor: '#fee2e2',
+                                    border: '1px solid #fecaca',
+                                    borderRadius: 'var(--radius-3)',
+                                    padding: 'var(--space-6)',
+                                    maxWidth: '400px',
+                                    margin: '0 auto'
+                                }}
+                            >
+                                <Text as="p" size="3" weight="bold" mb="2" style={{ color: '#b91c1c' }}>
+                                    Invalid anime ID
+                                </Text>
+                                <Text as="p" size="2" style={{ color: '#dc2626' }}>
+                                    The anime ID provided is not valid.
+                                </Text>
+                            </Box>
+                        </Box>
+                    </Container>
+                </main>
+                <Footer />
+            </>
+        )
+    }
+
     const [animeResponse, charactersResponse] = await Promise.allSettled([
         fetchAnimeById(animeId),
         fetchAnimeCharacters(animeId)
     ])
-    
+
     const anime = animeResponse.status === 'fulfilled' ? animeResponse.value.data : null
-    const characters = charactersResponse.status === 'fulfilled' ? charactersResponse.value.data?.slice(0, 12) : []
+    const characters = charactersResponse.status === 'fulfilled' ? charactersResponse.value.data : []
 
     if (!anime) {
         return (
@@ -123,14 +177,21 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
         )
     }
 
-    const imageUrl = getImageUrl(anime)
+    const imageUrl = getOptimizedImageUrl(anime)
+
+    const mainCharacters = characters?.filter(
+        (c: CharacterWithRole) => c.role === 'Main'
+    ).sort((a, b) => (b.favorites || b.character.favorites || 0) - (a.favorites || a.character.favorites || 0)) || []
+
+    const supportingCharacters = characters?.filter(
+        (c: CharacterWithRole) => c.role !== 'Main'
+    ).sort((a, b) => (b.favorites || b.character.favorites || 0) - (a.favorites || a.character.favorites || 0)) || []
 
     return (
         <>
             <Header />
             <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-                <Container size="4" px="4" py={{ initial: '12', md: '10' }}>
-                    {/* Back button */}
+                <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
                     <Box mb="6">
                         <Button variant="ghost" asChild>
                             <Link href="/" style={{ color: '#3b82f6' }}>
@@ -141,7 +202,7 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                     </Box>
 
                     <Flex gap="8" direction={{ initial: 'column', md: 'row' }}>
-                        {/* Anime Image Card */}
+                        {/* Left Column - Image & Actions */}
                         <Box style={{ flex: '0 0 300px' }}>
                             <Box
                                 style={{
@@ -190,11 +251,10 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                 )}
                             </Box>
 
-                            {/* Client Action Buttons (Share, Favorite) */}
                             <AnimeActionButtons anime={anime} />
                         </Box>
 
-                        {/* Anime Details Content */}
+                        {/* Right Column - Details */}
                         <Box style={{ flex: 1 }}>
                             {/* Titles */}
                             <div style={{ fontSize: '2rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
@@ -202,8 +262,20 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                             </div>
 
                             {anime.title_english && anime.title !== anime.title_english && (
-                                <Text as="p" size="4" mb="4" style={{ color: '#94a3b8' }}>
+                                <Text as="p" size="4" mb="2" style={{ color: '#94a3b8' }}>
                                     {anime.title}
+                                </Text>
+                            )}
+
+                            {anime.title_japanese && (
+                                <Text as="p" size="3" mb="4" style={{ color: '#64748b' }}>
+                                    {anime.title_japanese}
+                                </Text>
+                            )}
+
+                            {anime.title_synonyms && anime.title_synonyms.length > 0 && (
+                                <Text as="p" size="2" mb="4" style={{ color: '#475569' }}>
+                                    Also known as: {anime.title_synonyms.join(', ')}
                                 </Text>
                             )}
 
@@ -215,6 +287,11 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                         <Text size="4" weight="bold" style={{ color: 'white' }}>
                                             {formatScore(anime.score)}
                                         </Text>
+                                        {anime.scored_by && (
+                                            <Text size="2" style={{ color: '#64748b' }}>
+                                                ({anime.scored_by.toLocaleString()} votes)
+                                            </Text>
+                                        )}
                                     </Flex>
                                 )}
 
@@ -231,45 +308,131 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                 <Badge variant="soft" style={{ backgroundColor: '#1e293b', color: '#f59e0b' }}>
                                     {anime.status}
                                 </Badge>
+
+                                {anime.rating && (
+                                    <Badge variant="soft" style={{ backgroundColor: '#1e293b', color: '#f97316' }}>
+                                        {anime.rating}
+                                    </Badge>
+                                )}
                             </Flex>
 
-                            {/* Expandable Synopsis (Client Component) */}
+                            {/* Synopsis */}
                             <AnimeSynopsis synopsis={anime.synopsis} />
 
                             <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
 
-                            {/* Statistics & Metadata Grid */}
+                            {/* All Categories (Genres, Themes, Demographics, Explicit Genres) */}
                             <Box mb="6">
-                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>
-                                    Statistics & Information
+                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Hash size={18} style={{ color: '#3b82f6' }} />
+                                    Categories
+                                </div>
+                                <Flex gap="2" wrap="wrap">
+                                    {anime.genres?.map((genre) => (
+                                        <Badge key={`genre_${genre.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6' }}>
+                                            {genre.name}
+                                        </Badge>
+                                    ))}
+                                    {anime.themes?.map((theme) => (
+                                        <Badge key={`theme_${theme.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#10b981' }}>
+                                            {theme.name}
+                                        </Badge>
+                                    ))}
+                                    {anime.demographics?.map((demo) => (
+                                        <Badge key={`demo_${demo.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#a855f7' }}>
+                                            {demo.name}
+                                        </Badge>
+                                    ))}
+                                    {anime.explicit_genres?.map((eg) => (
+                                        <Badge key={`eg_${eg.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#ef4444' }}>
+                                            {eg.name}
+                                        </Badge>
+                                    ))}
+                                </Flex>
+                                {anime.source && (
+                                    <Flex gap="2" mt="3" align="center">
+                                        <BookOpen size={14} style={{ color: '#64748b' }} />
+                                        <Text size="2" style={{ color: '#94a3b8' }}>Source: {anime.source}</Text>
+                                    </Flex>
+                                )}
+                            </Box>
+
+                            <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
+
+                            {/* Detailed Information Grid */}
+                            <Box mb="6">
+                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Info size={18} style={{ color: '#3b82f6' }} />
+                                    Information
                                 </div>
 
                                 <Grid columns={{ initial: '1', sm: '2', lg: '3' }} gap="6">
+                                    {/* Basic Info */}
                                     <Box>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
-                                            Basic Information
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                            <Calendar size={14} />
+                                            Air Dates
                                         </div>
                                         <Flex direction="column" gap="3">
                                             {anime.aired?.from && (
                                                 <Box>
-                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Aired</Text>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Premiered</Text>
                                                     <Text as="p" size="3" style={{ color: 'white' }}>
                                                         {formatDate(anime.aired.from)}
-                                                        {anime.aired.to && ` to ${formatDate(anime.aired.to)}`}
                                                     </Text>
                                                 </Box>
                                             )}
+                                            {anime.aired?.to && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Ended</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {formatDate(anime.aired.to)}
+                                                    </Text>
+                                                </Box>
+                                            )}
+                                            {anime.season && anime.year && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Season</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>
+                                                        {anime.season.charAt(0).toUpperCase() + anime.season.slice(1)} {anime.year}
+                                                    </Text>
+                                                </Box>
+                                            )}
+                                        </Flex>
+                                    </Box>
+
+                                    {/* Duration & Episodes */}
+                                    <Box>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                            <Clock size={14} />
+                                            Format
+                                        </div>
+                                        <Flex direction="column" gap="3">
                                             {anime.duration && (
                                                 <Box>
                                                     <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Duration</Text>
                                                     <Text as="p" size="3" style={{ color: 'white' }}>{anime.duration}</Text>
                                                 </Box>
                                             )}
+                                            {anime.episodes && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Episodes</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>{anime.episodes}</Text>
+                                                </Box>
+                                            )}
+                                            {anime.type && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Type</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>{anime.type}</Text>
+                                                </Box>
+                                            )}
                                         </Flex>
                                     </Box>
 
+                                    {/* Rankings & Stats */}
                                     <Box>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
+                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                            <Award size={14} />
                                             Rankings
                                         </div>
                                         <Flex direction="column" gap="3">
@@ -285,56 +448,281 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                                     <Text as="p" size="3" style={{ color: '#3b82f6', fontWeight: 'bold' }}>#{anime.popularity}</Text>
                                                 </Box>
                                             )}
-                                        </Flex>
-                                    </Box>
-
-                                    <Box>
-                                        <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.75rem', color: '#94a3b8' }}>
-                                            Network
-                                        </div>
-                                        <Flex direction="column" gap="3">
-                                            <Box>
-                                                <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Source</Text>
-                                                <Text as="p" size="3" style={{ color: 'white' }}>{anime.status}</Text>
-                                            </Box>
+                                            {anime.members && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Members</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>{anime.members.toLocaleString()}</Text>
+                                                </Box>
+                                            )}
+                                            {anime.favorites && (
+                                                <Box>
+                                                    <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Favorites</Text>
+                                                    <Text as="p" size="3" style={{ color: '#ef4444', fontWeight: 'bold' }}>
+                                                        <Heart size={12} style={{ display: 'inline', marginRight: '4px' }} fill="currentColor" />
+                                                        {anime.favorites.toLocaleString()}
+                                                    </Text>
+                                                </Box>
+                                            )}
                                         </Flex>
                                     </Box>
                                 </Grid>
                             </Box>
 
-                            {/* Categories (Genres, Themes) */}
+                            <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
+
+                            {/* Broadcast Schedule */}
+                            {anime.broadcast && (
+                                <Box mb="6">
+                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Radio size={18} style={{ color: '#f97316' }} />
+                                        Broadcast Schedule
+                                    </div>
+                                    <Box
+                                        style={{
+                                            backgroundColor: '#1e293b',
+                                            borderRadius: 'var(--radius-3)',
+                                            padding: '1rem'
+                                        }}
+                                    >
+                                        {anime.broadcast.string && (
+                                            <Text as="p" size="3" style={{ color: 'white' }}>{anime.broadcast.string}</Text>
+                                        )}
+                                        {!anime.broadcast.string && anime.broadcast.day && (
+                                            <Text as="p" size="3" style={{ color: 'white' }}>
+                                                {anime.broadcast.day}
+                                                {anime.broadcast.time && ` at ${anime.broadcast.time}`}
+                                                {anime.broadcast.timezone && ` (${anime.broadcast.timezone})`}
+                                            </Text>
+                                        )}
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {/* Streaming Platforms */}
+                            {anime.streaming && anime.streaming.length > 0 && (
+                                <Box mb="6">
+                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Globe size={18} style={{ color: '#10b981' }} />
+                                        Streaming Platforms
+                                    </div>
+                                    <Flex gap="2" wrap="wrap">
+                                        {anime.streaming.map((stream, index) => (
+                                            <a
+                                                key={index}
+                                                href={stream.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    backgroundColor: '#1e293b',
+                                                    color: '#3b82f6',
+                                                    padding: '0.5rem 1rem',
+                                                    borderRadius: 'var(--radius-2)',
+                                                    textDecoration: 'none',
+                                                    fontSize: '0.875rem',
+                                                    fontWeight: '500',
+                                                    transition: 'background-color 0.2s'
+                                                }}
+                                            >
+                                                <ExternalLink size={14} />
+                                                {stream.name}
+                                            </a>
+                                        ))}
+                                    </Flex>
+                                </Box>
+                            )}
+
+                            {/* Studios, Producers & Licensors */}
                             <Box mb="6">
-                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white' }}>
-                                    Categories
+                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Building2 size={18} style={{ color: '#a855f7' }} />
+                                    Production
                                 </div>
-                                <Flex gap="2" wrap="wrap">
-                                    {anime.genres?.map((genre) => (
-                                        <Badge key={genre.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6' }}>
-                                            {genre.name}
-                                        </Badge>
-                                    ))}
-                                    {anime.themes?.map((theme) => (
-                                        <Badge key={theme.mal_id} variant="soft" style={{ backgroundColor: '#1e293b', color: '#10b981' }}>
-                                            {theme.name}
-                                        </Badge>
-                                    ))}
-                                </Flex>
+                                <Grid columns={{ initial: '1', sm: '2' }} gap="4">
+                                    {anime.studios && anime.studios.length > 0 && (
+                                        <Box
+                                            style={{
+                                                backgroundColor: '#1e293b',
+                                                borderRadius: 'var(--radius-3)',
+                                                padding: '1rem'
+                                            }}
+                                        >
+                                            <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>Studios</Text>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.studios.map((studio) => (
+                                                    <Badge key={studio.mal_id} variant="soft" style={{ backgroundColor: '#0f172a', color: '#3b82f6' }}>
+                                                        {studio.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+
+                                    {anime.producers && anime.producers.length > 0 && (
+                                        <Box
+                                            style={{
+                                                backgroundColor: '#1e293b',
+                                                borderRadius: 'var(--radius-3)',
+                                                padding: '1rem'
+                                            }}
+                                        >
+                                            <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>Producers</Text>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.producers.map((producer) => (
+                                                    <Badge key={producer.mal_id} variant="soft" style={{ backgroundColor: '#0f172a', color: '#10b981' }}>
+                                                        {producer.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+
+                                    {anime.licensors && anime.licensors.length > 0 && (
+                                        <Box
+                                            style={{
+                                                backgroundColor: '#1e293b',
+                                                borderRadius: 'var(--radius-3)',
+                                                padding: '1rem'
+                                            }}
+                                        >
+                                            <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>Licensors</Text>
+                                            <Flex gap="2" wrap="wrap">
+                                                {anime.licensors.map((licensor) => (
+                                                    <Badge key={licensor.mal_id} variant="soft" style={{ backgroundColor: '#0f172a', color: '#f59e0b' }}>
+                                                        {licensor.name}
+                                                    </Badge>
+                                                ))}
+                                            </Flex>
+                                        </Box>
+                                    )}
+                                </Grid>
                             </Box>
 
-                            {/* Characters Section */}
-                            {characters && characters.length > 0 && (
+                            {/* Opening & Ending Themes */}
+                            {anime.theme && ((anime.theme.openings && anime.theme.openings.length > 0) || (anime.theme.endings && anime.theme.endings.length > 0)) && (
+                                <Box mb="6">
+                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Music size={18} style={{ color: '#ec4899' }} />
+                                        Themes
+                                    </div>
+                                    <Grid columns={{ initial: '1', sm: '2' }} gap="4">
+                                        {anime.theme.openings && anime.theme.openings.length > 0 && (
+                                            <Box
+                                                style={{
+                                                    backgroundColor: '#1e293b',
+                                                    borderRadius: 'var(--radius-3)',
+                                                    padding: '1rem'
+                                                }}
+                                            >
+                                                <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>Opening Themes</Text>
+                                                <Flex direction="column" gap="2">
+                                                    {anime.theme.openings.map((op, index) => (
+                                                        <Text key={index} as="p" size="2" style={{ color: 'white' }}>
+                                                            {op}
+                                                        </Text>
+                                                    ))}
+                                                </Flex>
+                                            </Box>
+                                        )}
+
+                                        {anime.theme.endings && anime.theme.endings.length > 0 && (
+                                            <Box
+                                                style={{
+                                                    backgroundColor: '#1e293b',
+                                                    borderRadius: 'var(--radius-3)',
+                                                    padding: '1rem'
+                                                }}
+                                            >
+                                                <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>Ending Themes</Text>
+                                                <Flex direction="column" gap="2">
+                                                    {anime.theme.endings.map((ed, index) => (
+                                                        <Text key={index} as="p" size="2" style={{ color: 'white' }}>
+                                                            {ed}
+                                                        </Text>
+                                                    ))}
+                                                </Flex>
+                                            </Box>
+                                        )}
+                                    </Grid>
+                                </Box>
+                            )}
+
+                            {/* Background */}
+                            {anime.background && (
+                                <Box mb="6">
+                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <BookOpen size={18} style={{ color: '#f59e0b' }} />
+                                        Background
+                                    </div>
+                                    <Box
+                                        style={{
+                                            backgroundColor: '#1e293b',
+                                            borderRadius: 'var(--radius-3)',
+                                            padding: '1rem'
+                                        }}
+                                    >
+                                        <Text as="p" size="3" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
+                                            {anime.background}
+                                        </Text>
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {/* Related Anime */}
+                            {anime.relations && anime.relations.length > 0 && (
+                                <Box mb="6">
+                                    <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <LinkIcon size={18} style={{ color: '#06b6d4' }} />
+                                        Related Anime
+                                    </div>
+                                    <Flex direction="column" gap="3">
+                                        {anime.relations.map((relation, index) => (
+                                            <Box
+                                                key={index}
+                                                style={{
+                                                    backgroundColor: '#1e293b',
+                                                    borderRadius: 'var(--radius-3)',
+                                                    padding: '1rem'
+                                                }}
+                                            >
+                                                <Text as="p" size="2" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>
+                                                    {relation.relation}
+                                                </Text>
+                                                <Flex gap="2" wrap="wrap">
+                                                    {relation.entry.map((entry) => (
+                                                        <Badge key={entry.mal_id} variant="soft" style={{ backgroundColor: '#0f172a', color: '#06b6d4' }}>
+                                                            {entry.name}
+                                                        </Badge>
+                                                    ))}
+                                                </Flex>
+                                            </Box>
+                                        ))}
+                                    </Flex>
+                                </Box>
+                            )}
+
+                            <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
+
+                            {/* Characters Section - Show 12 initially with Show More */}
+                            {(mainCharacters.length > 0 || (supportingCharacters && supportingCharacters.length > 0)) && (
+                                <CharacterGrid
+                                    mainCharacters={mainCharacters}
+                                    supportingCharacters={supportingCharacters}
+                                    initialVisible={12}
+                                />
+                            )}
+
+                            {/* Fallback if no characters at all */}
+                            {mainCharacters.length === 0 && (!characters || characters.length === 0) && (
                                 <Box mb="6">
                                     <Flex align="center" gap="2" mb="4">
-                                        <Users size={20} style={{ color: '#3b82f6' }} />
-                                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white' }}>
-                                            Characters
+                                        <Users size={20} style={{ color: '#64748b' }} />
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#64748b' }}>
+                                            No character information available
                                         </div>
                                     </Flex>
-                                    <Grid columns={{ initial: '2', sm: '3', md: '4' }} gap="4">
-                                        {characters.map((character, index) => (
-                                            <CharacterCard key={`char_${index}`} character={character} />
-                                        ))}
-                                    </Grid>
                                 </Box>
                             )}
                         </Box>

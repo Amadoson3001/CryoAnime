@@ -1,16 +1,16 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { Box, Badge, Flex, Text } from '@radix-ui/themes';
-import { Heart } from 'lucide-react';
-import { CharacterData } from '@/lib/api';
+import { Heart, Mic, ChevronDown, ChevronUp } from 'lucide-react';
+import { CharacterData, VoiceActorData } from '@/lib/api';
 
 interface CharacterWithRole {
   character: CharacterData;
   role: string;
   favorites?: number;
-  voice_actors?: any[];
+  voice_actors?: VoiceActorData[];
 }
 
 interface CharacterCardProps {
@@ -18,25 +18,27 @@ interface CharacterCardProps {
 }
 
 const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
-  // Handle both possible character data structures
-  // The Jikan API returns characters in format: { character: CharacterData, role: string, favorites?: number, voice_actors: [...] }
-  // We need to extract the character data and handle the role properly
+  const [showVoiceActors, setShowVoiceActors] = useState(false);
+
   const charData = 'character' in character ? character.character : character;
   const role = 'role' in character ? character.role : charData.role || 'Unknown Role';
+  const voiceActors: VoiceActorData[] = ('voice_actors' in character && character.voice_actors)
+    ? character.voice_actors
+    : [];
 
-  // Skip characters without required data
   if (!charData || !charData.mal_id) {
     return null;
   }
 
-  // Ensure we have a valid favorites count
-  // Check both the character data and the wrapper object for favorites
   const characterFavorites = charData?.favorites;
   const wrapperFavorites = 'favorites' in character ? character.favorites : undefined;
   const favoritesCount = wrapperFavorites || characterFavorites;
   const displayFavorites = (typeof favoritesCount === 'number' && !isNaN(favoritesCount) && favoritesCount > 0)
     ? favoritesCount.toLocaleString()
     : '0';
+
+  // Get Japanese voice actors
+  const japaneseVA = voiceActors.filter(va => va.language === 'Japanese');
 
   return (
     <Box
@@ -56,7 +58,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
         e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      {/* Character Image - Full size without padding */}
+      {/* Character Image */}
       <Box
         style={{
           position: 'relative',
@@ -105,6 +107,18 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
           }}>
             {charData.name || 'Unknown Character'}
           </div>
+
+          {charData.name_kanji && (
+            <div style={{
+              fontSize: '0.75rem',
+              color: '#cbd5e1',
+              marginBottom: '0.5rem',
+              textShadow: '0 1px 3px rgba(0, 0, 0, 0.9)'
+            }}>
+              {charData.name_kanji}
+            </div>
+          )}
+
           <div style={{
             fontSize: '0.8rem',
             color: '#e2e8f0',
@@ -118,7 +132,32 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
           }}>
             {role}
           </div>
-          <Flex justify="center">
+
+          {/* Voice Actor Toggle */}
+          {japaneseVA.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                cursor: 'pointer',
+                padding: '0.25rem 0',
+                marginTop: '0.25rem'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowVoiceActors(!showVoiceActors);
+              }}
+            >
+              <Mic size={10} style={{ color: '#a855f7' }} />
+              <span style={{ fontSize: '0.7rem', color: '#a855f7' }}>
+                {japaneseVA.length} VA{japaneseVA.length > 1 ? 's' : ''}
+              </span>
+              {showVoiceActors ? <ChevronUp size={10} style={{ color: '#a855f7' }} /> : <ChevronDown size={10} style={{ color: '#a855f7' }} />}
+            </div>
+          )}
+
+          <Flex justify="center" mt="2">
             <Badge
               variant="soft"
               style={{
@@ -142,6 +181,91 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
           </Flex>
         </Box>
       </Box>
+
+      {/* Voice Actors Expandable Section */}
+      {showVoiceActors && japaneseVA.length > 0 && (
+        <Box
+          style={{
+            backgroundColor: '#1e293b',
+            borderRadius: 'var(--radius-3)',
+            padding: '0.75rem',
+            marginTop: '-0.5rem'
+          }}
+        >
+          <Text as="p" size="1" mb="2" style={{ color: '#94a3b8', fontWeight: 'bold' }}>
+            Voice Actors
+          </Text>
+          <Flex direction="column" gap="2">
+            {japaneseVA.map((va, index) => (
+              <Flex key={index} align="center" gap="2">
+                <Box
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    flexShrink: 0
+                  }}
+                >
+                  {va.person.images?.jpg?.image_url ? (
+                    <Image
+                      src={va.person.images.jpg.image_url}
+                      alt={va.person.name}
+                      fill
+                      style={{ objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Mic size={10} style={{ color: '#64748b' }} />
+                    </div>
+                  )}
+                </Box>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{
+                    fontSize: '0.7rem',
+                    color: 'white',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {va.person.name}
+                  </div>
+                  <div style={{
+                    fontSize: '0.6rem',
+                    color: '#94a3b8'
+                  }}>
+                    {va.language}
+                  </div>
+                </div>
+              </Flex>
+            ))}
+          </Flex>
+        </Box>
+      )}
+
+      {/* Nicknames */}
+      {charData.nicknames && charData.nicknames.length > 0 && !showVoiceActors && (
+        <Box
+          style={{
+            backgroundColor: '#1e293b',
+            borderRadius: 'var(--radius-3)',
+            padding: '0.5rem 0.75rem',
+            marginTop: '-0.5rem'
+          }}
+        >
+          <Text as="p" size="1" style={{ color: '#94a3b8' }}>
+            <span style={{ fontWeight: 'bold' }}>Also known as:</span> {charData.nicknames.join(', ')}
+          </Text>
+        </Box>
+      )}
     </Box>
   );
 };

@@ -198,7 +198,7 @@ const AboutPage = () => {
                 </Box>
 
                 {/* Stats Section */}
-                <Container size="4" px="4" py="8">
+                <Container size="4" px="4" py="8" className="page-enter">
                     <Grid columns={{ initial: '1', sm: '2', lg: '4' }} gap="4" mb="8">
                         {stats.map((stat, index) => (
                             <Card

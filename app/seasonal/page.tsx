@@ -8,7 +8,7 @@ import { AnimeGrid } from '@/components/anime_cards'
 import { fetchSeasonalAnime, AnimeData, getCurrentSeasonInfo } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
 import { Box, Container, Flex, Text, Heading, Select } from '@radix-ui/themes'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 
 const SeasonalPage = () => {
     const [animeList, setAnimeList] = useState<AnimeData[]>([])
@@ -92,12 +92,10 @@ const SeasonalPage = () => {
 
     const handleYearChange = (year: string) => {
         setSelectedYear(parseInt(year))
-        fetchSeasonalAnimeData(1, false)
     }
 
     const handleSeasonChange = (season: string) => {
         setSelectedSeason(season)
-        fetchSeasonalAnimeData(1, false)
     }
 
 
@@ -128,7 +126,7 @@ const SeasonalPage = () => {
                             left: '8%',
                             width: '45px',
                             height: '45px',
-                            backgroundColor: 'rgba(239, 68, 0.1)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             borderRadius: '50%',
                             animation: 'float 3.5s ease-in-out infinite'
                         }}
@@ -272,60 +270,6 @@ const SeasonalPage = () => {
                         }} />
                     </div>
                 </div>
-
-                <style jsx global>{`
-          @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-25px) rotate(180deg); }
-          }
-
-          @keyframes slideInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-
-          @keyframes pulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: 1;
-            }
-            50% {
-              transform: scale(1.1);
-              opacity: 0.8;
-            }
-          }
-
-          @keyframes wave {
-            0%, 60%, 100% {
-              transform: scaleY(1);
-            }
-            30% {
-              transform: scaleY(1.8);
-            }
-          }
-
-          @keyframes scalePulse {
-            0%, 100% {
-              transform: scale(1);
-              opacity: 0.6;
-            }
-            50% {
-              transform: scale(1.3);
-              opacity: 1;
-            }
-          }
-        `}</style>
             </div>
         )
     }
@@ -340,47 +284,6 @@ const SeasonalPage = () => {
                     paddingTop: '5rem'
                 }}
             >
-                <style jsx global>{`
-          @keyframes fadeInUp {
-            from {
-              opacity: 0;
-              transform: translateY(30px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .page-enter {
-            animation: slideInFromBottom 0.8s ease-out;
-          }
-
-          @keyframes slideInFromBottom {
-            from {
-              opacity: 0;
-              transform: translateY(50px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-
-          .anime-grid-enter {
-            animation: fadeInGrid 0.4s ease-out 0.2s both;
-          }
-
-          @keyframes fadeInGrid {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
-          }
-        `}</style>
-
                 <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>
@@ -445,7 +348,7 @@ const SeasonalPage = () => {
                                         variant="soft"
                                         style={{
                                             backgroundColor: '#1e293b',
-                                            borderColor: '#33415',
+                                            borderColor: '#334155',
                                             color: 'white',
                                             minWidth: '120px'
                                         }}
@@ -478,7 +381,7 @@ const SeasonalPage = () => {
                     )}
 
                     {/* Anime Grid with Animation */}
-                    <Box className="anime-grid-enter">
+                    <Box className="anime-grid-enter" key={`grid-${currentPage}`}>
                         <AnimeGrid
                             animeList={animeList}
                             loading={loading}

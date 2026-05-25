@@ -23,31 +23,18 @@ import {
   TextField,
   Button
 } from '@radix-ui/themes'
-import { searchAnime, AnimeData } from '@/lib/api'
+import { 
+  searchAnime, 
+  AnimeData,
+  fetchTopAnime,
+  fetchSeasonalAnime,
+  fetchMovies,
+  fetchAnimeSchedule,
+  getCurrentSeasonInfo
+} from '@/lib/api'
 import { getNsfwPreference, setNsfwPreference } from '@/lib/userPreferences'
+import { usePerformance } from '@/lib/usePerformance'
 import { AnimeSearchResults } from '@/components/animesearchcard'
-
-/**
- * Extremely lightweight device hint so we can degrade behaviour on "potato" devices.
- * Uses only synchronous, cheap checks and caches result.
- */
-const useIsLowEndDevice = () => {
-  const [isLowEnd, setIsLowEnd] = useState(false)
-
-  useEffect(() => {
-    try {
-      // Cache in memory only; no extra storage calls
-      const hw = navigator.hardwareConcurrency || 2
-      const mem = (navigator as any).deviceMemory || 2
-      const isSlow = hw <= 4 || mem <= 2
-      setIsLowEnd(isSlow)
-    } catch {
-      setIsLowEnd(false)
-    }
-  }, [])
-
-  return isLowEnd
-}
 
 const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -61,7 +48,44 @@ const Header: React.FC = () => {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const isLowEnd = useIsLowEndDevice()
+  const { isLowEnd } = usePerformance()
+
+  // Prefetch data based on route to make switching flipping fast
+  const prefetchRouteData = React.useCallback(async (href: string) => {
+    try {
+      const includeNsfw = getNsfwPreference()
+      const { year, season } = getCurrentSeasonInfo()
+      
+      switch (href) {
+        case '/trending':
+          // Prefetch first page of seasonal anime matching Trending Page
+          fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
+          break
+        case '/seasonal':
+          // Prefetch first page of seasonal anime matching Seasonal Page
+          fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
+          break
+        case '/movies':
+          // Prefetch movies matching Movies Page
+          fetchMovies(1, 24, includeNsfw, 'popularity', 'desc')
+          break
+        case '/top-rated':
+          // Prefetch top anime matching Top Rated Page
+          fetchTopAnime(1, 24, includeNsfw)
+          break
+        case '/schedule':
+          // Prefetch today's schedule for instant load
+          const today = new Date()
+          const todayDay = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
+          fetchAnimeSchedule(todayDay, includeNsfw)
+          break
+        default:
+          break
+      }
+    } catch (e) {
+      console.warn('Prefetch failed:', e)
+    }
+  }, [])
 
   // Stable navigation items to avoid re-allocations
   const navigationItems = useMemo(
@@ -291,6 +315,8 @@ const Header: React.FC = () => {
                     key={item.href}
                     href={item.href}
                     style={{ textDecoration: 'none' }}
+                    onMouseEnter={() => prefetchRouteData(item.href)}
+                    onFocus={() => prefetchRouteData(item.href)}
                   >
                     <Flex
                       align="center"
@@ -491,6 +517,8 @@ const Header: React.FC = () => {
                 key={item.href}
                 href={item.href}
                 style={{ textDecoration: 'none' }}
+                onMouseEnter={() => prefetchRouteData(item.href)}
+                onFocus={() => prefetchRouteData(item.href)}
               >
                 <Flex
                   align="center"

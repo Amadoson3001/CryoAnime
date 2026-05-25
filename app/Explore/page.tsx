@@ -126,7 +126,7 @@ const GenresPage = () => {
     <>
       <Header />
       <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-        <Container size="4" px="4" py={{ initial: '12', md: '10' }}>
+        <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
           {/* Page Header */}
           <Box mb="8" style={{ textAlign: 'center' }}>
             <h1 style={{

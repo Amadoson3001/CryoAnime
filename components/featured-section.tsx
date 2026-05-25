@@ -4,7 +4,7 @@ import { AnimeGrid } from './anime_cards'
 import Link from 'next/link'
 import { useShouldSimplify } from '@/lib/usePerformance'
 
-import { fetchTopAnimeForLanding, fetchSeasonalAnimeForLanding, AnimeData, preloadAnimeImages } from '@/lib/api'
+import { fetchTopAnimeForLanding, fetchSeasonalAnimeForLanding, AnimeData, preloadAnimeImages, getCurrentSeasonInfo } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
 import { ChevronRight, Trophy, Calendar } from 'lucide-react'
 import {
@@ -15,30 +15,6 @@ import {
   Button,
   Separator
 } from '@radix-ui/themes'
-
-// Helper function to get the current season based on month
-const getCurrentSeason = (month: number): string => {
-  if (month >= 3 && month <= 5) return 'spring'
-  if (month >= 6 && month <= 8) return 'summer'
-  if (month >= 9 && month <= 11) return 'fall'
-  return 'winter'
-}
-
-// Helper function to get the current year and season
-const getCurrentYearAndSeason = (): { year: number; season: string } => {
-  const now = new Date()
-  const currentMonth = now.getMonth() + 1 // getMonth() returns 0-11
-  const currentYear = now.getFullYear()
-
-  // For December, January, February - check if it's early in the year to show previous year's winter
-  if (currentMonth === 1 || currentMonth === 2) {
-    return { year: currentYear, season: 'winter' }
-  } else if (currentMonth === 12) {
-    return { year: currentYear + 1, season: 'winter' }
-  }
-
-  return { year: currentYear, season: getCurrentSeason(currentMonth) }
-}
 
 const FeaturedSection = () => {
   const shouldSimplify = useShouldSimplify()
@@ -54,7 +30,7 @@ const FeaturedSection = () => {
         setError(null)
 
         // Get current year and season
-        const { year, season } = getCurrentYearAndSeason()
+        const { year, season } = getCurrentSeasonInfo()
 
         // Get NSFW preference
         const includeNsfw = getNsfwPreference()

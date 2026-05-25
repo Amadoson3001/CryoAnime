@@ -1,7 +1,5 @@
 // app/layout.tsx (or pages/_app.tsx)
 import './globals.css'
-import './anime-theme.css'
-import './optimized-animations.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { Theme } from '@radix-ui/themes'
@@ -47,47 +45,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={inter.className}
         style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}
       >
-        {/* Minimal inline theme guard to avoid extra runtime work */}
-        <Script
-          id="theme-script"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `document.documentElement.classList.add('dark');`,
-          }}
-        />
+        {/* Minimal theme guard to avoid extra runtime work */}
+        <Script src="/theme-guard.js" strategy="beforeInteractive" />
 
         {/* Potato-mode: if user previously opted into ultra-low effects, apply class ASAP */}
         {/* Also auto-enable for mobile and low-end devices on first visit */}
-        <Script
-          id="potato-pref"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                const pref = window.localStorage.getItem('cryoanime-potato-mode');
-                // If explicitly set, use that value
-                if (pref === '1') {
-                  document.documentElement.classList.add('potato-mode');
-                } else if (pref === null) {
-                  // Auto-detect on first visit
-                  var isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry/i.test(navigator.userAgent);
-                  var hw = navigator.hardwareConcurrency || 4;
-                  var mem = navigator.deviceMemory || 4;
-                  var isLowEnd = hw <= 4 || mem <= 2;
-                  if (isMobile || isLowEnd) {
-                    document.documentElement.classList.add('potato-mode');
-                    // Don't save to storage so user can manually override later
-                  }
-                }
-              } catch (e) {}
-            `
-          }}
-        />
+        <Script src="/potato-mode.js" strategy="beforeInteractive" />
 
         {/* Keep Radix Theme but avoid dynamic props that could cause re-renders */}
         <Theme

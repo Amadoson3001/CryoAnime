@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { AnimeGrid } from '@/components/anime_cards'
@@ -20,6 +20,7 @@ import {
 // Component that uses useSearchParams - needs to be wrapped in Suspense
 const SearchContent = () => {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const initialQuery = searchParams.get('q') || ''
 
   const [query, setQuery] = useState(initialQuery)
@@ -63,7 +64,7 @@ const SearchContent = () => {
     if (query.trim()) {
       // Update URL with search query
       const newUrl = `/search?q=${encodeURIComponent(query)}`
-      window.history.pushState({}, '', newUrl)
+      router.push(newUrl)
       performSearch(query)
     }
   }
@@ -74,7 +75,7 @@ const SearchContent = () => {
 
   return (
     <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-      <Container size="4" px="4" py={{ initial: '12', md: '10' }}>
+      <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
         {/* Search Header */}
         <Box mb="8">
           <Text as="p" size="8" weight="bold" mb="6" style={{ color: 'white' }}>
