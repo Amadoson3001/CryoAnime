@@ -34,7 +34,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
   const wrapperFavorites = 'favorites' in character ? character.favorites : undefined;
   const favoritesCount = wrapperFavorites || characterFavorites;
   const displayFavorites = (typeof favoritesCount === 'number' && !isNaN(favoritesCount) && favoritesCount > 0)
-    ? favoritesCount.toLocaleString()
+    ? favoritesCount.toLocaleString('en-US')
     : '0';
 
   // Get Japanese voice actors

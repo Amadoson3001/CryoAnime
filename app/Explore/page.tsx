@@ -1,11 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { AnimeGrid } from '@/components/anime_cards'
 import Pagination from '@/components/Pagination'
-import { fetchGenres, fetchAnimeByGenre, Genre, AnimeData, AnimeResponse } from '@/lib/api'
+import { fetchTagsByCategory, fetchAnimeByTags, Genre, AnimeData, AnimeResponse, TagCategory } from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
 import {
   Container,
@@ -17,13 +17,22 @@ import {
   DropdownMenu,
   Badge,
   ScrollArea,
-  TextField
+  TextField,
+  Tabs
 } from '@radix-ui/themes'
-import { ChevronDown, Filter, X, Check, Search } from 'lucide-react'
+import { ChevronDown, Filter, X, Check, Search, Tags } from 'lucide-react'
 
-const GenresPage = () => {
-  const [genres, setGenres] = useState<Genre[]>([])
-  const [selectedGenres, setSelectedGenres] = useState<number[]>([])
+const CATEGORIES: { key: TagCategory; label: string; color: string }[] = [
+  { key: 'genres', label: 'Genres', color: '#3b82f6' },
+  { key: 'themes', label: 'Themes', color: '#10b981' },
+  { key: 'demographics', label: 'Demographics', color: '#a855f7' },
+  { key: 'explicit_genres', label: 'Explicit', color: '#ef4444' },
+]
+
+const ExplorePage = () => {
+  const [tagCategory, setTagCategory] = useState<TagCategory>('genres')
+  const [tags, setTags] = useState<Genre[]>([])
+  const [selectedTags, setSelectedTags] = useState<number[]>([])
   const [animeList, setAnimeList] = useState<AnimeData[]>([])
   const [loading, setLoading] = useState(true)
   const [animeLoading, setAnimeLoading] = useState(false)
@@ -34,31 +43,31 @@ const GenresPage = () => {
   const [hasNextPage, setHasNextPage] = useState(false)
   const [sortBy, setSortBy] = useState('popularity')
   const [sortOrder, setSortOrder] = useState('desc')
-  const [genreSearch, setGenreSearch] = useState('')
+  const [tagSearch, setTagSearch] = useState('')
 
   const itemsPerPage = 24
 
-  // Fetch all genres on component mount
-  useEffect(() => {
-    const loadGenres = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await fetchGenres()
-        setGenres(response.data)
-      } catch (err) {
-        setError('Failed to load genres. Please try again.')
-      } finally {
-        setLoading(false)
-      }
+  const loadTags = useCallback(async (category: TagCategory) => {
+    try {
+      setLoading(true)
+      setError(null)
+      setSelectedTags([])
+      setAnimeList([])
+      const response = await fetchTagsByCategory(category)
+      setTags(response.data)
+    } catch (err) {
+      setError(`Failed to load ${category}. Please try again.`)
+    } finally {
+      setLoading(false)
     }
-
-    loadGenres()
   }, [])
 
-  // Fetch anime by genres when selection or sort options change
-  const fetchAnimeForGenres = async (genreIds: number[], page: number = 1, sort: string = sortBy, order: string = sortOrder) => {
-    if (genreIds.length === 0) {
+  useEffect(() => {
+    loadTags(tagCategory)
+  }, [tagCategory, loadTags])
+
+  const fetchAnimeForTags = async (tagIds: number[], page: number = 1, sort: string = sortBy, order: string = sortOrder) => {
+    if (tagIds.length === 0) {
       setAnimeList([])
       setTotalPages(1)
       setHasNextPage(false)
@@ -68,97 +77,119 @@ const GenresPage = () => {
     try {
       setAnimeLoading(true)
       setAnimeError(null)
-      
+
       const includeNsfw = getNsfwPreference()
-      const response: AnimeResponse = await fetchAnimeByGenre(genreIds, page, itemsPerPage, includeNsfw, sort, order)
-      
+      const response: AnimeResponse = await fetchAnimeByTags(tagIds, tagCategory, page, itemsPerPage, includeNsfw, sort, order)
+
       setAnimeList(response.data)
       setTotalPages(response.pagination.last_visible_page)
       setHasNextPage(response.pagination.has_next_page)
       setCurrentPage(page)
     } catch (err) {
-      setAnimeError('Failed to load anime for these genres. Please try again.')
+      setAnimeError(`Failed to load anime for these ${tagCategory}. Please try again.`)
     } finally {
       setAnimeLoading(false)
     }
   }
 
-  // Handle genre toggle
-  const toggleGenre = (genreId: number) => {
-    setSelectedGenres(prev => {
-      const next = prev.includes(genreId) 
-        ? prev.filter(id => id !== genreId)
-        : [...prev, genreId]
-      
-      // Auto-fetch when selection changes
-      fetchAnimeForGenres(next, 1, sortBy, sortOrder)
+  const toggleTag = (tagId: number) => {
+    setSelectedTags(prev => {
+      const next = prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+
+      fetchAnimeForTags(next, 1, sortBy, sortOrder)
       return next
     })
   }
 
-  const clearGenres = () => {
-    setSelectedGenres([])
+  const clearTags = () => {
+    setSelectedTags([])
     setAnimeList([])
   }
 
-  // Handle sort change
   const handleSortChange = (sort: string, order: string) => {
     setSortBy(sort)
     setSortOrder(order)
-    if (selectedGenres.length > 0) {
-      fetchAnimeForGenres(selectedGenres, 1, sort, order)
+    if (selectedTags.length > 0) {
+      fetchAnimeForTags(selectedTags, 1, sort, order)
     }
   }
 
-  // Handle page change
   const handlePageChange = (page: number) => {
-    if (selectedGenres.length > 0 && page >= 1 && page <= totalPages && page !== currentPage) {
-      fetchAnimeForGenres(selectedGenres, page, sortBy, sortOrder)
+    if (selectedTags.length > 0 && page >= 1 && page <= totalPages && page !== currentPage) {
+      fetchAnimeForTags(selectedTags, page, sortBy, sortOrder)
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
-  const filteredGenres = genres.filter(g => 
-    g.name.toLowerCase().includes(genreSearch.toLowerCase())
+  const filteredTags = tags.filter(t =>
+    t.name.toLowerCase().includes(tagSearch.toLowerCase())
   )
+
+  const currentCategory = CATEGORIES.find(c => c.key === tagCategory)!
 
   return (
     <>
       <Header />
       <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-        <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
+        <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
           {/* Page Header */}
-          <Box mb="8" style={{ textAlign: 'center' }}>
+          <Box mb="6" style={{ textAlign: 'center' }}>
             <h1 style={{
               fontSize: 'var(--font-size-8)',
               fontWeight: 'bold',
               color: 'white',
-              margin: '0 0 1rem 0'
+              margin: '0 0 0.75rem 0'
             }}>
-              Explore by Genre
+              Explore Anime
             </h1>
             <Text as="p" size="4" style={{ color: '#cbd5e1', maxWidth: '600px', margin: '0 auto' }}>
-              Select one or more genres to discover your next favorite anime
+              Browse by genres, themes, demographics, and more
             </Text>
           </Box>
+
+          {/* Category Tabs */}
+          <Flex justify="center" mb="6">
+            <Tabs.Root value={tagCategory} onValueChange={(value) => setTagCategory(value as TagCategory)}>
+              <Tabs.List size="2" style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)', padding: '4px', borderRadius: '12px' }}>
+                {CATEGORIES.map(cat => (
+                  <Tabs.Trigger
+                    key={cat.key}
+                    value={cat.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      color: tagCategory === cat.key ? cat.color : undefined
+                    }}
+                  >
+                    <Tags size={14} />
+                    {cat.label}
+                  </Tabs.Trigger>
+                ))}
+              </Tabs.List>
+            </Tabs.Root>
+          </Flex>
 
           {/* Controls Row */}
           <Flex direction="column" gap="4" mb="8">
             <Flex gap="4" wrap="wrap" justify="center" align="start">
-              {/* Genre Multi-Select Popover */}
+              {/* Tag Multi-Select Popover */}
               <Box style={{ minWidth: '300px', flex: '1 1 300px' }}>
                 <Text as="label" size="2" weight="bold" style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>
-                  Filter by Genres ({selectedGenres.length})
+                  Filter by {currentCategory.label} ({selectedTags.length})
                 </Text>
-                
+
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
-                    <Button 
-                      variant="soft" 
-                      style={{ 
-                        width: '100%', 
-                        backgroundColor: '#1e293b', 
-                        color: 'white', 
+                    <Button
+                      variant="soft"
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#1e293b',
+                        color: 'white',
                         borderColor: '#334155',
                         justifyContent: 'space-between',
                         height: '40px'
@@ -167,9 +198,9 @@ const GenresPage = () => {
                       <Flex gap="2" align="center">
                         <Filter size={16} />
                         <Text>
-                          {selectedGenres.length === 0 
-                            ? "Select genres..." 
-                            : `${selectedGenres.length} genres selected`}
+                          {selectedTags.length === 0
+                            ? `Select ${currentCategory.label.toLowerCase()}...`
+                            : `${selectedTags.length} ${currentCategory.label.toLowerCase()} selected`}
                         </Text>
                       </Flex>
                       <ChevronDown size={16} />
@@ -177,10 +208,10 @@ const GenresPage = () => {
                   </DropdownMenu.Trigger>
                   <DropdownMenu.Content style={{ width: '300px', padding: '8px', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
                     <Box p="2">
-                      <TextField.Root 
-                        placeholder="Search genres..." 
-                        value={genreSearch}
-                        onChange={(e) => setGenreSearch(e.target.value)}
+                      <TextField.Root
+                        placeholder={`Search ${currentCategory.label.toLowerCase()}...`}
+                        value={tagSearch}
+                        onChange={(e) => setTagSearch(e.target.value)}
                         mb="3"
                         style={{ backgroundColor: '#0f172a' }}
                       >
@@ -189,44 +220,54 @@ const GenresPage = () => {
                         </TextField.Slot>
                       </TextField.Root>
                     </Box>
-                    <ScrollArea scrollbars="vertical" style={{ height: '300px' }}>
-                      <Flex direction="column" gap="1">
-                        {filteredGenres.map(genre => {
-                          const isSelected = selectedGenres.includes(genre.mal_id)
-                          return (
-                            <Box 
-                              key={genre.mal_id}
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                toggleGenre(genre.mal_id)
-                              }}
-                              style={{
-                                padding: '8px 12px',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'between',
-                                backgroundColor: isSelected ? 'rgba(59, 130, 246, 0.2)' : 'transparent',
-                                color: isSelected ? '#60a5fa' : '#cbd5e1',
-                                transition: 'all 0.2s ease'
-                              }}
-                            >
-                              <Text size="2">{genre.name}</Text>
-                              {isSelected && <Check size={14} style={{ marginLeft: 'auto' }} />}
-                            </Box>
-                          )
-                        })}
-                      </Flex>
-                    </ScrollArea>
-                    {selectedGenres.length > 0 && (
+                    {loading ? (
+                      <Box p="4" style={{ textAlign: 'center' }}>
+                        <Text size="2" style={{ color: '#64748b' }}>Loading...</Text>
+                      </Box>
+                    ) : error ? (
+                      <Box p="4" style={{ textAlign: 'center' }}>
+                        <Text size="2" style={{ color: '#ef4444' }}>{error}</Text>
+                      </Box>
+                    ) : (
+                      <ScrollArea scrollbars="vertical" style={{ height: '300px' }}>
+                        <Flex direction="column" gap="1">
+                          {filteredTags.map(tag => {
+                            const isSelected = selectedTags.includes(tag.mal_id)
+                            return (
+                              <Box
+                                key={tag.mal_id}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  toggleTag(tag.mal_id)
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'between',
+                                  backgroundColor: isSelected ? `${currentCategory.color}33` : 'transparent',
+                                  color: isSelected ? currentCategory.color : '#cbd5e1',
+                                  transition: 'all 0.2s ease'
+                                }}
+                              >
+                                <Text size="2">{tag.name}</Text>
+                                {isSelected && <Check size={14} style={{ marginLeft: 'auto' }} />}
+                              </Box>
+                            )
+                          })}
+                        </Flex>
+                      </ScrollArea>
+                    )}
+                    {selectedTags.length > 0 && (
                       <Box mt="2" pt="2" style={{ borderTop: '1px solid #334155' }}>
-                        <Button 
-                          variant="ghost" 
-                          size="1" 
-                          color="red" 
-                          onClick={clearGenres}
+                        <Button
+                          variant="ghost"
+                          size="1"
+                          color="red"
+                          onClick={clearTags}
                           style={{ width: '100%' }}
                         >
                           Clear Selection
@@ -244,20 +285,20 @@ const GenresPage = () => {
                 </Text>
                 <DropdownMenu.Root>
                   <DropdownMenu.Trigger>
-                    <Button 
-                      variant="soft" 
-                      style={{ 
-                        width: '100%', 
-                        backgroundColor: '#1e293b', 
-                        color: 'white', 
+                    <Button
+                      variant="soft"
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#1e293b',
+                        color: 'white',
                         borderColor: '#334155',
                         justifyContent: 'space-between',
                         height: '40px'
                       }}
                     >
-                      {sortBy === 'popularity' ? 'Popularity' : 
-                       sortBy === 'score' ? 'Score' : 
-                       sortBy === 'recent' ? 'Recent' : 
+                      {sortBy === 'popularity' ? 'Popularity' :
+                       sortBy === 'score' ? 'Score' :
+                       sortBy === 'recent' ? 'Recent' :
                        sortBy === 'title' ? 'Title' : 'Popularity'}
                       <ChevronDown size={16} />
                     </Button>
@@ -276,20 +317,20 @@ const GenresPage = () => {
               </Box>
             </Flex>
 
-            {/* Selected Genre Badges */}
-            {selectedGenres.length > 0 && (
+            {/* Selected Tag Badges */}
+            {selectedTags.length > 0 && (
               <Flex gap="2" wrap="wrap" justify="center">
-                {selectedGenres.map(id => {
-                  const genre = genres.find(g => g.mal_id === id)
-                  if (!genre) return null
+                {selectedTags.map(id => {
+                  const tag = tags.find(t => t.mal_id === id)
+                  if (!tag) return null
                   return (
-                    <Badge 
-                      key={id} 
-                      size="2" 
-                      variant="solid" 
-                      style={{ 
-                        backgroundColor: '#3b82f6', 
-                        padding: '4px 10px', 
+                    <Badge
+                      key={id}
+                      size="2"
+                      variant="solid"
+                      style={{
+                        backgroundColor: currentCategory.color,
+                        padding: '4px 10px',
                         borderRadius: '20px',
                         cursor: 'default',
                         display: 'flex',
@@ -297,9 +338,9 @@ const GenresPage = () => {
                         gap: '6px'
                       }}
                     >
-                      {genre.name}
-                      <Box 
-                        onClick={() => toggleGenre(id)} 
+                      {tag.name}
+                      <Box
+                        onClick={() => toggleTag(id)}
                         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
                         <X size={12} />
@@ -313,7 +354,7 @@ const GenresPage = () => {
 
           {/* Anime Grid */}
           <Box>
-            {selectedGenres.length > 0 ? (
+            {selectedTags.length > 0 ? (
               <>
                 <Box mb="6" style={{ textAlign: 'center' }}>
                   {!animeLoading && animeList.length > 0 && (
@@ -340,9 +381,11 @@ const GenresPage = () => {
             ) : (
               <Box style={{ textAlign: 'center', padding: '4rem 2rem', backgroundColor: 'rgba(30, 41, 59, 0.3)', borderRadius: '16px', border: '2px dashed #334155' }}>
                 <Filter size={48} style={{ color: '#334155', marginBottom: '1rem', opacity: 0.5 }} />
-                <Heading as="h3" size="5" mb="2" style={{ color: 'white' }}>No genres selected</Heading>
+                <Heading as="h3" size="5" mb="2" style={{ color: 'white' }}>
+                  No {currentCategory.label.toLowerCase()} selected
+                </Heading>
                 <Text as="p" style={{ color: '#94a3b8' }}>
-                  Select one or more anime genres above to start exploring.
+                  Select one or more {currentCategory.label.toLowerCase()} above to start exploring.
                 </Text>
               </Box>
             )}
@@ -354,4 +397,4 @@ const GenresPage = () => {
   )
 }
 
-export default GenresPage
+export default ExplorePage

@@ -52,8 +52,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
 }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [error, setError] = useState<Error | null>(null);
-    const [isRetrying, setIsRetrying] = useState(false);
-    const widgetRef = useRef<any>(null);
     const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const quotes = useMemo(() => [
         "Welcome to CryoAnime, Senpai! I'm here to help you discover the absolute best anime using the magical Jikan API! ❄️✨",
@@ -120,18 +118,6 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
         tips: { ...defaultSettings.tips, ...settings.tips }
     }), [defaultSettings, settings]);
 
-    const retryInitialization = () => {
-        setIsRetrying(true);
-        setError(null);
-        if (retryTimeoutRef.current) {
-            clearTimeout(retryTimeoutRef.current);
-            retryTimeoutRef.current = null;
-        }
-        setIsLoaded(false);
-        widgetRef.current = null;
-        setTimeout(() => setIsRetrying(false), 500);
-    };
-
     // Cycle through general quotes periodically
     useEffect(() => {
         const interval = setInterval(() => {
@@ -154,83 +140,62 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
     useEffect(() => {
         const initializeLive2D = async () => {
             try {
-                const possibleGlobals = ['L2Dwidget', 'live2d', 'Live2D', 'L2D'];
-                let existingWidget = null;
-
-                for (const globalName of possibleGlobals) {
-                    if (window[globalName as keyof Window]) {
-                        existingWidget = window[globalName as keyof Window];
-                        break;
-                    }
-                }
-
-                if (existingWidget && widgetRef.current) {
-                    window.live2d_settings = mergedSettings;
-                    widgetRef.current.updateSettings?.(mergedSettings);
+                if (document.getElementById('live2d')) {
                     setIsLoaded(true);
                     onLoad?.();
                     return;
                 }
 
-                window.live2d_settings = mergedSettings;
-
                 const loadScript = (src: string): Promise<void> => {
                     return new Promise((resolve, reject) => {
-                        const existingScript = document.querySelector(`script[src="${src}"]`);
-                        if (existingScript) { resolve(); return; }
+                        const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+                        if (existingScript?.dataset.loaded === 'true') {
+                            resolve();
+                            return;
+                        }
+                        if (existingScript) {
+                            existingScript.addEventListener('load', () => resolve(), { once: true });
+                            existingScript.addEventListener(
+                                'error',
+                                () => reject(new Error(`Failed to load script: ${src}`)),
+                                { once: true }
+                            );
+                            return;
+                        }
                         const script = document.createElement('script');
                         script.src = src;
                         script.async = true;
-                        script.onload = () => resolve();
+                        script.onload = () => {
+                            script.dataset.loaded = 'true';
+                            resolve();
+                        };
                         script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
                         document.head.appendChild(script);
                     });
                 };
 
-                await loadScript('https://cdn.jsdelivr.net/gh/stevenjoezhang/live2d-widget@latest/autoload.js');
+                await loadScript('https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.1/dist/autoload.js');
 
                 let attempts = 0;
-                const maxAttempts = 100;
+                const maxAttempts = 80;
                 const baseDelay = 100;
 
                 const checkWidget = () => {
-                    for (const globalName of possibleGlobals) {
-                        if (window[globalName as keyof Window]) {
-                            widgetRef.current = window[globalName as keyof Window];
-                            if (typeof widgetRef.current === 'function') {
-                                try { widgetRef.current(mergedSettings); } catch {}
-                            }
-                            setIsLoaded(true);
-                            onLoad?.();
-                            return;
-                        }
-                    }
-
-                    if (window.live2d_settings && (window as any).loadlive2d) {
-                        try {
-                            (window as any).loadlive2d();
-                            widgetRef.current = { settings: mergedSettings };
-                            setIsLoaded(true);
-                            onLoad?.();
-                            return;
-                        } catch {}
+                    const canvas = document.getElementById('live2d');
+                    const waifu = document.getElementById('waifu');
+                    if (canvas && waifu) {
+                        setIsLoaded(true);
+                        onLoad?.();
+                        return;
                     }
 
                     attempts++;
                     if (attempts < maxAttempts) {
-                        const delay = baseDelay * Math.pow(1.2, attempts) + Math.random() * 50;
-                        retryTimeoutRef.current = setTimeout(checkWidget, Math.min(delay, 1000));
+                        retryTimeoutRef.current = setTimeout(checkWidget, baseDelay);
                     } else {
-                        if ((window as any).initLive2D) {
-                            try {
-                                (window as any).initLive2D(mergedSettings);
-                                widgetRef.current = { settings: mergedSettings };
-                                setIsLoaded(true);
-                                onLoad?.();
-                                return;
-                            } catch {}
-                        }
-                        throw new Error(`Live2D widget failed to load.`);
+                        const loadError = new Error('Live2D widget failed to initialize.');
+                        setError(loadError);
+                        onError?.(loadError);
                     }
                 };
 
@@ -242,15 +207,23 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
             }
         };
 
-        initializeLive2D();
+        let startTimeout: ReturnType<typeof setTimeout> | null = null;
+        const startAfterHydration = () => {
+            startTimeout = setTimeout(initializeLive2D, 750);
+        };
+
+        if (document.readyState === 'complete') {
+            startAfterHydration();
+        } else {
+            window.addEventListener('load', startAfterHydration, { once: true });
+        }
 
         return () => {
+            window.removeEventListener('load', startAfterHydration);
+            if (startTimeout) clearTimeout(startTimeout);
             if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-            if (widgetRef.current && typeof widgetRef.current.destroy === 'function') {
-                widgetRef.current.destroy();
-            }
         };
-    }, [mergedSettings, onLoad, onError, isRetrying]);
+    }, [onLoad, onError]);
 
     useEffect(() => {
         const handleWaifuClick = (e: MouseEvent) => {
@@ -315,30 +288,7 @@ const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
     }, [clickQuotes]);
 
     if (error && !isLoaded) {
-        return (
-            <div style={{
-                position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000,
-                backgroundColor: 'rgba(0, 0, 0, 0.8)', color: 'white',
-                padding: '12px 16px', borderRadius: '8px', fontSize: '14px',
-                maxWidth: '300px', border: '1px solid #ff6b6b',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
-            }}>
-                <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>Live2D Widget Error</div>
-                <div style={{ marginBottom: '12px', fontSize: '12px', opacity: 0.9 }}>{error.message}</div>
-                <button
-                    onClick={retryInitialization}
-                    disabled={isRetrying}
-                    style={{
-                        backgroundColor: '#3b82f6', color: 'white', border: 'none',
-                        padding: '6px 12px', borderRadius: '4px', fontSize: '12px',
-                        cursor: isRetrying ? 'not-allowed' : 'pointer',
-                        opacity: isRetrying ? 0.6 : 1, transition: 'opacity 0.2s'
-                    }}
-                >
-                    {isRetrying ? 'Retrying...' : 'Retry'}
-                </button>
-            </div>
-        );
+        return null;
     }
 
     return null;

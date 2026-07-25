@@ -4,17 +4,23 @@ import React, { useState, useEffect } from 'react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { AnimeCard } from '@/components/anime_cards'
-import { fetchAnimeSchedule, getCurrentSeasonInfo, AnimeData } from '@/lib/api'
+import {
+    AnimeData,
+    fetchWeeklyAnimeSchedule,
+    getCurrentSeasonInfo,
+    WEEKDAYS,
+    Weekday
+} from '@/lib/api'
 import { getNsfwPreference } from '@/lib/userPreferences'
-import { getCache, setCache } from '@/lib/cache'
 import { Box, Container, Flex, Text, Heading, Card, Grid, Badge } from '@radix-ui/themes'
 import { Calendar, Clock, Info } from 'lucide-react'
 
 interface DaySchedule {
-    day: string
+    day: Weekday
     displayName: string
     anime: AnimeData[]
     loading: boolean
+    unavailable?: boolean
 }
 
 const SchedulePage = () => {
@@ -26,7 +32,7 @@ const SchedulePage = () => {
     const [initialLoadComplete, setInitialLoadComplete] = useState(false)
 
     // Days of the week for the schedule - will be reordered to start from today
-    const baseDaysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    const baseDaysOfWeek = [...WEEKDAYS]
 
     // Get season information and today on component mount
     useEffect(() => {
@@ -45,10 +51,11 @@ const SchedulePage = () => {
 
         // Get today's day to start the weekly schedule from
         const todayDay = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-        const todayIndex = baseDaysOfWeek.indexOf(todayDay)
+        const todayIndex = baseDaysOfWeek.indexOf(todayDay as Weekday)
+        const safeTodayIndex = todayIndex >= 0 ? todayIndex : 0
         const reorderedDays = [
-            ...baseDaysOfWeek.slice(todayIndex),
-            ...baseDaysOfWeek.slice(0, todayIndex)
+            ...baseDaysOfWeek.slice(safeTodayIndex),
+            ...baseDaysOfWeek.slice(0, safeTodayIndex)
         ]
 
         // Initialize weekly schedule structure
@@ -76,64 +83,24 @@ const SchedulePage = () => {
 
             const includeNsfw = getNsfwPreference()
 
-            // Helper to process items in batches to avoid rate-limiting
-            const processInBatches = async (items: DaySchedule[], batchSize: number, delay: number) => {
-                let results: DaySchedule[] = []
-                for (let i = 0; i < items.length; i += batchSize) {
-                    const batch = items.slice(i, i + batchSize)
-                    const batchPromises = batch.map(async daySchedule => {
-                        const cacheKey = `schedule_${daySchedule.day}_${includeNsfw}`
-                        const cachedData = getCache<AnimeData[]>(cacheKey)
-
-                        if (cachedData) {
-                            return {
-                                ...daySchedule,
-                                anime: cachedData,
-                                loading: false
-                            }
-                        }
-
-                        try {
-                            const response = await fetchAnimeSchedule(daySchedule.day, includeNsfw)
-                            setCache(cacheKey, response.data)
-                            return {
-                                ...daySchedule,
-                                anime: response.data,
-                                loading: false
-                            }
-                        } catch (error) {
-                            console.error(`Failed to load schedule for ${daySchedule.day}:`, error)
-                            return {
-                                ...daySchedule,
-                                anime: [],
-                                loading: false
-                            }
-                        }
-                    })
-                    results = results.concat(await Promise.all(batchPromises))
-
-                    if (i + batchSize < items.length) {
-                        // Only delay if the next batch is not fully cached
-                        const nextBatch = items.slice(i + batchSize, i + 2 * batchSize)
-                        const isNextBatchCached = nextBatch.every(
-                            d => !!getCache(`schedule_${d.day}_${includeNsfw}`)
-                        )
-                        if (!isNextBatchCached) {
-                            await new Promise(res => setTimeout(res, delay))
-                        }
-                    }
-                }
-                return results
-            }
-
             try {
-                // Process in batches of 3 with a 1-second delay between batches
-                const updatedSchedule = await processInBatches(weeklySchedule, 3, 1000)
-                setWeeklySchedule(updatedSchedule)
+                const schedule = await fetchWeeklyAnimeSchedule(includeNsfw)
+                setWeeklySchedule(currentSchedule =>
+                    currentSchedule.map(day => ({
+                        ...day,
+                        anime: schedule[day.day],
+                        loading: false,
+                        unavailable: false
+                    }))
+                )
             } catch (err) {
                 setError('Failed to load weekly schedule. Please try again.')
                 setWeeklySchedule(currentSchedule =>
-                    currentSchedule.map(day => ({ ...day, loading: false }))
+                    currentSchedule.map(day => ({
+                        ...day,
+                        loading: false,
+                        unavailable: true
+                    }))
                 )
             } finally {
                 setLoading(false)
@@ -217,7 +184,7 @@ const SchedulePage = () => {
                     paddingTop: '5rem'
                 }}
             >
-                <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
+                <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>
                         <Flex align="center" justify="center" gap="2" mb="4">
@@ -300,6 +267,12 @@ const SchedulePage = () => {
                                                     </Card>
                                                 ))}
                                             </Grid>
+                                        ) : daySchedule.unavailable ? (
+                                            <Box style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                                                <Text as="p" size="4" style={{ color: '#fca5a5' }}>
+                                                    Today&apos;s schedule is temporarily unavailable
+                                                </Text>
+                                            </Box>
                                         ) : daySchedule.anime.length > 0 ? (
                                             <Grid columns={{ initial: '2', sm: '2', md: '3', lg: '4' }} gap="6" style={{ maxWidth: '1200px' }}>
                                                 {daySchedule.anime.map((anime, animeIndex) => (
@@ -340,7 +313,7 @@ const SchedulePage = () => {
                                                     color: 'white'
                                                 }}
                                             >
-                                                {daySchedule.anime.length} anime
+                                                {daySchedule.unavailable ? 'Unavailable' : `${daySchedule.anime.length} anime`}
                                             </Badge>
                                         </Flex>
 
@@ -356,6 +329,20 @@ const SchedulePage = () => {
                                                     </Card>
                                                 ))}
                                             </Grid>
+                                        ) : daySchedule.unavailable ? (
+                                            <Box
+                                                style={{
+                                                    textAlign: 'center',
+                                                    padding: '32px',
+                                                    backgroundColor: '#1e293b',
+                                                    border: '1px solid #7f1d1d',
+                                                    borderRadius: '8px'
+                                                }}
+                                            >
+                                                <Text as="p" size="3" style={{ color: '#fca5a5' }}>
+                                                    Schedule temporarily unavailable for {daySchedule.displayName}
+                                                </Text>
+                                            </Box>
                                         ) : daySchedule.anime.length > 0 ? (
                                             <Box style={{
                                                 overflowX: 'auto',

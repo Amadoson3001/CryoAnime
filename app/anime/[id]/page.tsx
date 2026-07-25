@@ -289,7 +289,7 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                         </Text>
                                         {anime.scored_by && (
                                             <Text size="2" style={{ color: '#64748b' }}>
-                                                ({anime.scored_by.toLocaleString()} votes)
+                                                ({anime.scored_by.toLocaleString('en-US')} votes)
                                             </Text>
                                         )}
                                     </Flex>
@@ -321,41 +321,80 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
 
                             <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
 
-                            {/* All Categories (Genres, Themes, Demographics, Explicit Genres) */}
-                            <Box mb="6">
-                                <div style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1rem', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Hash size={18} style={{ color: '#3b82f6' }} />
-                                    Categories
-                                </div>
-                                <Flex gap="2" wrap="wrap">
-                                    {anime.genres?.map((genre) => (
-                                        <Badge key={`genre_${genre.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6' }}>
-                                            {genre.name}
-                                        </Badge>
-                                    ))}
-                                    {anime.themes?.map((theme) => (
-                                        <Badge key={`theme_${theme.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#10b981' }}>
-                                            {theme.name}
-                                        </Badge>
-                                    ))}
-                                    {anime.demographics?.map((demo) => (
-                                        <Badge key={`demo_${demo.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#a855f7' }}>
-                                            {demo.name}
-                                        </Badge>
-                                    ))}
-                                    {anime.explicit_genres?.map((eg) => (
-                                        <Badge key={`eg_${eg.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#ef4444' }}>
-                                            {eg.name}
-                                        </Badge>
-                                    ))}
-                                </Flex>
-                                {anime.source && (
-                                    <Flex gap="2" mt="3" align="center">
-                                        <BookOpen size={14} style={{ color: '#64748b' }} />
-                                        <Text size="2" style={{ color: '#94a3b8' }}>Source: {anime.source}</Text>
+                            {/* Genres */}
+                            {anime.genres && anime.genres.length > 0 && (
+                                <Box mb="5">
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <Hash size={14} style={{ color: '#3b82f6' }} />
+                                        Genres
+                                    </div>
+                                    <Flex gap="2" wrap="wrap">
+                                        {anime.genres.map((genre) => (
+                                            <Badge key={`genre_${genre.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#3b82f6' }}>
+                                                {genre.name}
+                                            </Badge>
+                                        ))}
                                     </Flex>
-                                )}
-                            </Box>
+                                </Box>
+                            )}
+
+                            {/* Themes */}
+                            {anime.themes && anime.themes.length > 0 && (
+                                <Box mb="5">
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <Hash size={14} style={{ color: '#10b981' }} />
+                                        Themes
+                                    </div>
+                                    <Flex gap="2" wrap="wrap">
+                                        {anime.themes.map((theme) => (
+                                            <Badge key={`theme_${theme.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#10b981' }}>
+                                                {theme.name}
+                                            </Badge>
+                                        ))}
+                                    </Flex>
+                                </Box>
+                            )}
+
+                            {/* Demographics */}
+                            {anime.demographics && anime.demographics.length > 0 && (
+                                <Box mb="5">
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <Hash size={14} style={{ color: '#a855f7' }} />
+                                        Demographics
+                                    </div>
+                                    <Flex gap="2" wrap="wrap">
+                                        {anime.demographics.map((demo) => (
+                                            <Badge key={`demo_${demo.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#a855f7' }}>
+                                                {demo.name}
+                                            </Badge>
+                                        ))}
+                                    </Flex>
+                                </Box>
+                            )}
+
+                            {/* Explicit Genres */}
+                            {anime.explicit_genres && anime.explicit_genres.length > 0 && (
+                                <Box mb="5">
+                                    <div style={{ fontSize: '0.875rem', fontWeight: 'bold', marginBottom: '0.625rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+                                        <Hash size={14} style={{ color: '#ef4444' }} />
+                                        Explicit Genres
+                                    </div>
+                                    <Flex gap="2" wrap="wrap">
+                                        {anime.explicit_genres.map((eg) => (
+                                            <Badge key={`eg_${eg.mal_id}`} variant="soft" style={{ backgroundColor: '#1e293b', color: '#ef4444' }}>
+                                                {eg.name}
+                                            </Badge>
+                                        ))}
+                                    </Flex>
+                                </Box>
+                            )}
+
+                            {anime.source && (
+                                <Flex gap="2" mt="2" align="center">
+                                    <BookOpen size={14} style={{ color: '#64748b' }} />
+                                    <Text size="2" style={{ color: '#94a3b8' }}>Source: {anime.source}</Text>
+                                </Flex>
+                            )}
 
                             <Separator mb="6" style={{ backgroundColor: '#1e293b' }} />
 
@@ -451,7 +490,7 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                             {anime.members && (
                                                 <Box>
                                                     <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Members</Text>
-                                                    <Text as="p" size="3" style={{ color: 'white' }}>{anime.members.toLocaleString()}</Text>
+                                                    <Text as="p" size="3" style={{ color: 'white' }}>{anime.members.toLocaleString('en-US')}</Text>
                                                 </Box>
                                             )}
                                             {anime.favorites && (
@@ -459,7 +498,7 @@ export default async function AnimeDetailsPage({ params }: PageProps) {
                                                     <Text as="p" size="2" mb="1" style={{ color: '#64748b' }}>Favorites</Text>
                                                     <Text as="p" size="3" style={{ color: '#ef4444', fontWeight: 'bold' }}>
                                                         <Heart size={12} style={{ display: 'inline', marginRight: '4px' }} fill="currentColor" />
-                                                        {anime.favorites.toLocaleString()}
+                                                        {anime.favorites.toLocaleString('en-US')}
                                                     </Text>
                                                 </Box>
                                             )}

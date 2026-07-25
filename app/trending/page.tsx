@@ -263,7 +263,7 @@ const TrendingPage = () => {
           paddingTop: '5rem'
         }}
       >
-        <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
+        <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
           {/* Page Header */}
           <Box mb="8" style={{ textAlign: 'center' }}>
             <Flex align="center" justify="center" gap="2" mb="4">

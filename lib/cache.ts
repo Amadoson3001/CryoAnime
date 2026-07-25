@@ -59,6 +59,40 @@ export function getCache<T = unknown>(key: string): T | null {
 }
 
 /**
+ * Return an expired cache entry while an upstream service is unavailable.
+ * Entries older than maxStaleMs past their normal expiry are discarded.
+ */
+export function getStaleCache<T = unknown>(
+  key: string,
+  maxStaleMs: number,
+): T | null {
+  const entry = memoryCache.get(key)
+  if (entry) {
+    if (Date.now() <= entry.expires + maxStaleMs) {
+      return entry.data as T
+    }
+    memoryCache.delete(key)
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        const item = JSON.parse(stored) as { data: T; expiry: number }
+        if (Date.now() <= item.expiry + maxStaleMs) {
+          return item.data
+        }
+        localStorage.removeItem(key)
+      }
+    } catch {
+      // Ignore malformed or inaccessible localStorage data.
+    }
+  }
+
+  return null
+}
+
+/**
  * Set a value in both in-memory and localStorage caches.
  */
 export function setCache<T = unknown>(key: string, data: T, ttlMs: number = DEFAULT_TTL): void {
@@ -119,6 +153,7 @@ export function clearCache(): void {
           key.startsWith('seasonal_') ||
           key.startsWith('anime_') ||
           key.startsWith('genres_') ||
+          key.startsWith('tags_') ||
           key.startsWith('schedule_')
         )) {
           keysToRemove.push(key)

@@ -33,7 +33,7 @@ const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
         className="anime-card"
         style={{
           position: 'relative',
-          height: '400px',
+          height: '420px',
           overflow: 'hidden',
           backgroundColor: '#1e293b',
           border: '1px solid #334155',
@@ -152,7 +152,7 @@ const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error
     return (
       <Grid
         columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }}
-        gap={{ initial: '4', md: '6' }}
+        gap={{ initial: '3', md: '5' }}
       >
         {Array.from({ length: 12 }).map((_, index) => (
           <Card key={index} style={{ overflow: 'hidden', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
@@ -195,7 +195,7 @@ const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error
   return (
     <Grid
       columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }}
-      gap={{ initial: '4', md: '6' }}
+      gap={{ initial: '3', md: '5' }}
     >
       {animeList.map((anime, index) => (
         <MemoizedAnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 2} />

@@ -312,85 +312,6 @@ html.potato-mode .anime-header span {
 
 /* =========================================
    SHARED PAGE ANIMATIONS
-   Consolidated from per-page style blocks
-   ========================================= */
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(180deg); }
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideInFromBottom {
-  from {
-    opacity: 0;
-    transform: translateY(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInGrid {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes scalePulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.3);
-    opacity: 1;
-  }
-}
-
-@keyframes wave {
-  0%, 60%, 100% {
-    transform: scaleY(1);
-  }
-  .anime-card:hover .anime-card-synopsis {
-    max-height: 5rem;
-  }
-}
-
-/* =========================================
-   SHARED PAGE ANIMATIONS
-   Consolidated from per-page style blocks
    ========================================= */
 
 @keyframes float {
@@ -466,6 +387,83 @@ html.potato-mode .anime-header span {
   }
 }
 
+/* =========================================
+   ANIME CARD HOVER & DESIGN EFFECTS
+   ========================================= */
+.anime-card {
+  position: relative !important;
+  height: 420px !important;
+  overflow: hidden !important;
+  background-color: #1e293b !important;
+  border: 1px solid #334155 !important;
+  cursor: pointer !important;
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.4s ease, box-shadow 0.4s ease !important;
+}
+
+.anime-card:hover {
+  transform: translateY(-6px) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 16px 32px -12px rgba(59, 130, 246, 0.5), 0 8px 24px -8px rgba(0, 0, 0, 0.5) !important;
+}
+
+.anime-card-image {
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+.anime-card:hover .anime-card-image {
+  transform: scale(1.08) !important;
+}
+
+.anime-card-overlay {
+  transition: background 0.4s ease, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 20%, rgba(15, 23, 42, 0.6) 70%, transparent 100%) !important;
+}
+
+.anime-card:hover .anime-card-overlay {
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.98) 40%, rgba(15, 23, 42, 0.85) 80%, rgba(15, 23, 42, 0.4) 100%) !important;
+}
+
+.anime-card-synopsis {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  margin-top: 0 !important;
+  overflow: hidden !important;
+  transition: max-height 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease, margin-top 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
+
+.anime-card:hover .anime-card-synopsis {
+  max-height: 120px !important;
+  opacity: 0.9 !important;
+  margin-top: 8px !important;
+}
+
+/* Potato-mode compatibility: turn off transitions/effects for low-performance devices */
+html.potato-mode .anime-card {
+  transition: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #334155 !important;
+}
+
+html.potato-mode .anime-card-image {
+  transition: none !important;
+}
+
+html.potato-mode .anime-card:hover .anime-card-image {
+  transform: none !important;
+}
+
+html.potato-mode .anime-card-synopsis {
+  max-height: none !important;
+  opacity: 1 !important;
+  margin-top: 8px !important;
+  transition: none !important;
+}
+
+html.potato-mode .anime-card-overlay {
+  transition: none !important;
+}
+
 @keyframes loadingBar {
   0% { width: 0%; }
   50% { width: 100%; }
@@ -529,4 +527,31 @@ html.potato-mode .anime-header span {
 
 .anime-grid-enter {
   animation: fadeInGrid 0.4s ease-out 0.2s both;
+}
+
+/* =========================================
+   RESPONSIVE CONTAINER OVERRIDES
+   Decreases side margins, increases content width
+   ========================================= */
+:root {
+  --container-max-width: 1440px !important;
+}
+
+.rt-Container {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+@media (min-width: 768px) {
+  .rt-Container {
+    width: 90% !important;
+    max-width: 1440px !important;
+  }
+}
+
+@media (min-width: 1536px) {
+  .rt-Container {
+    width: 90% !important;
+    max-width: 1560px !important;
+  }
 }

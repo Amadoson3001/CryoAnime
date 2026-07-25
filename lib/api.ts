@@ -1,5 +1,8 @@
 // Jikan API service for fetching anime data
-const JIKAN_API_BASE = 'https://api.jikan.moe/v4'
+const JIKAN_API_BASE = (
+  process.env.NEXT_PUBLIC_JIKAN_BASE_URL || 'https://api.jikan.moe/v4'
+).replace(/\/+$/, '')
+const JIKAN_API_PROXY = '/api/jikan'
 
 // Types for API responses
 export interface AnimeData {
@@ -187,14 +190,148 @@ export interface AnimeResponse {
 
 export type ImageSize = 'small' | 'medium' | 'large';
 
+export type TagCategory = 'genres' | 'themes' | 'demographics' | 'explicit_genres'
+
+// Jikan API uses the 'genres' param for all tag types (genres, themes, demographics, explicit_genres)
+// since IDs are globally unique across all categories
+const TAG_PARAM_MAP: Record<TagCategory, string> = {
+  genres: 'genres',
+  themes: 'genres',
+  demographics: 'genres',
+  explicit_genres: 'genres',
+}
+
 // Import unified cache utilities
-import { getCache, setCache, getPendingRequest, setPendingRequest, deletePendingRequest, CACHE_TTL } from './cache'
+import {
+  CACHE_TTL,
+  deletePendingRequest,
+  getCache,
+  getPendingRequest,
+  getStaleCache,
+  setCache,
+  setPendingRequest,
+} from './cache'
 
 // Rate limiting controls
 const REQUEST_DELAY = 1000 // 1 second between requests
 const MAX_RETRIES = 2
 const BASE_RETRY_DELAY = 1000
+const REQUEST_TIMEOUT = 15000
+const MAX_STALE_AGE = 7 * 24 * 60 * 60 * 1000
 let lastRequestTime = 0
+let requestQueue: Promise<void> = Promise.resolve()
+const FALLBACK_ANIME_CACHE_KEY = 'anime_last_known_good'
+const FALLBACK_MOVIE_CACHE_KEY = 'movies_last_known_good'
+
+class ApiRequestError extends Error {
+  constructor(message: string, readonly retryable: boolean) {
+    super(message)
+    this.name = 'ApiRequestError'
+  }
+}
+
+const rememberAnimeFallback = (anime: AnimeData[]): void => {
+  if (anime.length > 0) {
+    setCache(FALLBACK_ANIME_CACHE_KEY, anime, CACHE_TTL.LANDING)
+  }
+}
+
+const getRememberedAnimeFallback = (): AnimeData[] => {
+  return (
+    getCache<AnimeData[]>(FALLBACK_ANIME_CACHE_KEY) ||
+    getStaleCache<AnimeData[]>(FALLBACK_ANIME_CACHE_KEY, MAX_STALE_AGE) ||
+    []
+  )
+}
+
+const rememberMovieFallback = (anime: AnimeData[]): void => {
+  if (anime.length > 0) {
+    setCache(FALLBACK_MOVIE_CACHE_KEY, anime, CACHE_TTL.STATIC)
+  }
+}
+
+const getRememberedMovieFallback = (): AnimeData[] => {
+  return (
+    getCache<AnimeData[]>(FALLBACK_MOVIE_CACHE_KEY) ||
+    getStaleCache<AnimeData[]>(FALLBACK_MOVIE_CACHE_KEY, MAX_STALE_AGE) ||
+    []
+  )
+}
+
+const createSinglePageResponse = (anime: AnimeData[], perPage: number): AnimeResponse => ({
+  data: anime,
+  pagination: {
+    last_visible_page: 1,
+    has_next_page: false,
+    current_page: 1,
+    items: {
+      count: anime.length,
+      total: anime.length,
+      per_page: perPage,
+    },
+  },
+})
+
+const createFallbackMovie = (
+  malId: number,
+  title: string,
+  year: number,
+  score: number,
+  imageUrl: string,
+): AnimeData => ({
+  mal_id: malId,
+  title,
+  images: {
+    jpg: {
+      image_url: imageUrl,
+      small_image_url: imageUrl,
+      large_image_url: imageUrl,
+    },
+  },
+  synopsis: 'Anime information is temporarily limited while the live data service recovers.',
+  score,
+  type: 'Movie',
+  status: 'Finished Airing',
+  aired: {
+    prop: {
+      from: { year },
+      to: { year },
+    },
+  },
+  duration: 'Unknown',
+  year,
+  genres: [],
+  producers: [],
+  licensors: [],
+  studios: [],
+})
+
+const CURATED_MOVIE_FALLBACK: AnimeData[] = [
+  createFallbackMovie(57555, 'Chainsaw Man Movie: Reze Arc', 2025, 9.06, 'https://cdn.myanimelist.net/images/anime/1763/150638l.jpg'),
+  createFallbackMovie(39486, 'Gintama: The Final', 2021, 9.05, 'https://cdn.myanimelist.net/images/anime/1245/116760l.jpg'),
+  createFallbackMovie(28851, 'A Silent Voice', 2016, 8.93, 'https://cdn.myanimelist.net/images/anime/1122/96435l.jpg'),
+  createFallbackMovie(15335, 'Gintama Movie 2: The Final Chapter', 2013, 8.89, 'https://cdn.myanimelist.net/images/anime/10/51723l.jpg'),
+  createFallbackMovie(59571, 'Attack on Titan: The Last Attack', 2024, 8.83, 'https://cdn.myanimelist.net/images/anime/1379/145452l.jpg'),
+  createFallbackMovie(37987, 'Violet Evergarden: The Movie', 2020, 8.83, 'https://cdn.myanimelist.net/images/anime/1825/110716l.jpg'),
+  createFallbackMovie(32281, 'Your Name.', 2016, 8.82, 'https://cdn.myanimelist.net/images/anime/5/87048l.jpg'),
+  createFallbackMovie(31758, 'Kizumonogatari Part 3: Reiketsu', 2017, 8.78, 'https://cdn.myanimelist.net/images/anime/1084/112813l.jpg'),
+  createFallbackMovie(199, 'Spirited Away', 2001, 8.77, 'https://cdn.myanimelist.net/images/anime/6/79597l.jpg'),
+  createFallbackMovie(52198, 'Kaguya-sama: The First Kiss Never Ends', 2022, 8.71, 'https://cdn.myanimelist.net/images/anime/1670/130060l.jpg'),
+  createFallbackMovie(45649, 'The First Slam Dunk', 2022, 8.70, 'https://cdn.myanimelist.net/images/anime/1745/129284l.jpg'),
+  createFallbackMovie(431, "Howl's Moving Castle", 2004, 8.67, 'https://cdn.myanimelist.net/images/anime/1470/138723l.jpg'),
+  createFallbackMovie(164, 'Princess Mononoke', 1997, 8.67, 'https://cdn.myanimelist.net/images/anime/1355/147277l.jpg'),
+  createFallbackMovie(61952, 'The Legend of Hei 2', 2025, 8.66, 'https://cdn.myanimelist.net/images/anime/1288/151853l.jpg'),
+  createFallbackMovie(59192, 'Demon Slayer: Infinity Castle', 2025, 8.66, 'https://cdn.myanimelist.net/images/anime/1681/148216l.jpg'),
+  createFallbackMovie(57647, 'Uma Musume: Beginning of a New Era', 2024, 8.64, 'https://cdn.myanimelist.net/images/anime/1427/142210l.jpg'),
+  createFallbackMovie(33050, "Fate/stay night: Heaven's Feel III", 2020, 8.63, 'https://cdn.myanimelist.net/images/anime/1142/112957l.jpg'),
+  createFallbackMovie(52742, 'Haikyu!! The Dumpster Battle', 2024, 8.62, 'https://cdn.myanimelist.net/images/anime/1665/140360l.jpg'),
+  createFallbackMovie(58125, 'Look Back', 2024, 8.61, 'https://cdn.myanimelist.net/images/anime/1716/142633l.jpg'),
+  createFallbackMovie(4565, 'Gurren Lagann the Movie: The Lights in the Sky Are Stars', 2009, 8.61, 'https://cdn.myanimelist.net/images/anime/12/19698l.jpg'),
+  createFallbackMovie(36862, 'Made in Abyss: Dawn of the Deep Soul', 2020, 8.60, 'https://cdn.myanimelist.net/images/anime/1803/117183l.jpg'),
+  createFallbackMovie(38329, 'Rascal Does Not Dream of a Dreaming Girl', 2019, 8.59, 'https://cdn.myanimelist.net/images/anime/1613/102179l.jpg'),
+  createFallbackMovie(7311, 'The Disappearance of Haruhi Suzumiya', 2010, 8.59, 'https://cdn.myanimelist.net/images/anime/1248/112352l.jpg'),
+  createFallbackMovie(3786, 'Evangelion: 3.0+1.0 Thrice Upon a Time', 2021, 8.58, 'https://cdn.myanimelist.net/images/anime/1422/113533l.jpg'),
+]
 
 // Helper function to build sorted URL parameters
 const buildSortParams = (url: string, sort?: string, order?: string): string => {
@@ -270,7 +407,54 @@ const getCacheDuration = (endpoint: string): number => {
   return CACHE_TTL.DYNAMIC;
 }
 
+const wait = (delay: number): Promise<void> =>
+  new Promise(resolve => setTimeout(resolve, delay))
+
+const parseRetryAfter = (value: string | null): number | null => {
+  if (!value) return null
+
+  const seconds = Number(value)
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return seconds * 1000
+  }
+
+  const retryDate = Date.parse(value)
+  return Number.isNaN(retryDate) ? null : Math.max(0, retryDate - Date.now())
+}
+
+const scheduleRequest = <T>(request: () => Promise<T>): Promise<T> => {
+  const scheduled = requestQueue.then(async () => {
+    const elapsed = Date.now() - lastRequestTime
+    if (elapsed < REQUEST_DELAY) {
+      await wait(REQUEST_DELAY - elapsed)
+    }
+    lastRequestTime = Date.now()
+    return request()
+  })
+
+  requestQueue = scheduled.then(
+    () => undefined,
+    () => undefined,
+  )
+  return scheduled
+}
+
+const fetchWithTimeout = async (url: string): Promise<Response> => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+  try {
+    return await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
 async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
+  const stale = getStaleCache<T>(cacheKey, MAX_STALE_AGE)
+
   // Check unified cache first
   const cached = getCache<T>(cacheKey)
   if (cached) {
@@ -286,28 +470,29 @@ async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
   // Create a new promise for this request
   const requestPromise = (async () => {
     try {
-      // Implement request throttling
-      const now = Date.now()
-      const timeSinceLastRequest = now - lastRequestTime
-      if (timeSinceLastRequest < REQUEST_DELAY) {
-        const waitTime = REQUEST_DELAY - timeSinceLastRequest
-        await new Promise(resolve => setTimeout(resolve, waitTime))
-      }
-
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      // Browser requests already pass through the retrying same-origin proxy.
+      // Server-side calls go directly to Jikan and retry here.
+      const retries = typeof window === 'undefined' ? MAX_RETRIES : 0
+      for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-          lastRequestTime = Date.now()
-          const response = await fetch(`${JIKAN_API_BASE}/${endpoint}`)
+          const apiBase = typeof window === 'undefined' ? JIKAN_API_BASE : JIKAN_API_PROXY
+          const response = await scheduleRequest(
+            () => fetchWithTimeout(`${apiBase}/${endpoint}`),
+          )
 
-          // If we get a 429, wait and retry (except on final attempt)
-          if (response.status === 429 && attempt < MAX_RETRIES) {
-            const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
-            await new Promise(resolve => setTimeout(resolve, delay))
+          const retryableStatus = response.status === 429 || response.status >= 500
+          if (!response.ok && retryableStatus && attempt < retries) {
+            const retryAfter = parseRetryAfter(response.headers.get('retry-after'))
+            const delay = retryAfter ?? BASE_RETRY_DELAY * Math.pow(2, attempt)
+            await wait(delay)
             continue
           }
 
           if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
+            throw new ApiRequestError(
+              `HTTP error! status: ${response.status}`,
+              retryableStatus
+            )
           }
 
           const data = await response.json()
@@ -325,18 +510,23 @@ async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
           setCache(cacheKey, data, getCacheDuration(cacheKey));
           return data
         } catch (error) {
-          if (attempt === MAX_RETRIES || (error instanceof Error && !error.message.includes('429'))) {
+          const isRetryable = !(error instanceof ApiRequestError) || error.retryable
+          if (attempt === retries || !isRetryable) {
+            if (isRetryable && stale !== null) {
+              return stale
+            }
             throw error
           }
 
-          if (attempt < MAX_RETRIES) {
-            const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
-            await new Promise(resolve => setTimeout(resolve, delay))
-          }
+          const delay = BASE_RETRY_DELAY * Math.pow(2, attempt)
+          await wait(delay)
         }
       }
 
-      throw new Error(`Failed to fetch ${endpoint} after ${MAX_RETRIES} attempts`)
+      if (stale !== null) {
+        return stale
+      }
+      throw new Error(`Failed to fetch ${endpoint} after ${retries + 1} attempts`)
     } finally {
       deletePendingRequest(endpoint);
     }
@@ -349,7 +539,11 @@ async function fetchFromApi<T>(endpoint: string, cacheKey: string): Promise<T> {
 
 // Optimized API functions
 export const fetchTopAnime = async (page = 1, limit = 20, includeNsfw = false): Promise<AnimeResponse> => {
-   const response = await fetchFromApi<AnimeResponse>(`top/anime?page=${page}&limit=${limit}`, `top_anime_${page}_${limit}`)
+   const response = await fetchFromApi<AnimeResponse>(
+     `top/anime?page=${page}&limit=${limit}`,
+     `top_anime_${page}_${limit}`
+   )
+   rememberAnimeFallback(response.data)
    if (!includeNsfw) {
      response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
    }
@@ -365,8 +559,17 @@ export const fetchTopAnimeForLanding = async (includeNsfw = false): Promise<Anim
      return cached;
    }
 
-   const response = await fetchTopAnime(1, 10, includeNsfw)
-   const data = response.data
+   const response = await fetchFromApi<AnimeResponse>(
+     'top/anime?filter=bypopularity&page=1&limit=20',
+     'landing_top_anime_popular'
+   )
+   const filteredData = includeNsfw
+     ? response.data
+     : response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
+   rememberAnimeFallback(response.data)
+   const data = [...filteredData]
+     .sort((a, b) => (b.score || 0) - (a.score || 0))
+     .slice(0, 10)
 
    setCache(cacheKey, data, CACHE_TTL.LANDING);
    return data
@@ -384,19 +587,119 @@ export const fetchAnimeByGenre = async (genreIds: number | number[], page = 1, l
   return response
 }
 
-export const fetchMovies = async (page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
-  let url = `anime?type=movie&page=${page}&limit=${limit}`
+export const fetchAnimeByTags = async (tagIds: number | number[], tagType: TagCategory = 'genres', page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
+  const idsStr = Array.isArray(tagIds) ? tagIds.join(',') : tagIds
+  const param = TAG_PARAM_MAP[tagType]
+  let url = `anime?${param}=${idsStr}&page=${page}&limit=${limit}`
   url = buildSortParams(url, sort, order);
 
-  const response = await fetchFromApi<AnimeResponse>(url, `movies_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
+  const response = await fetchFromApi<AnimeResponse>(url, `${tagType}_${idsStr}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
   return response
 }
 
+const sortMoviePage = (
+  anime: AnimeData[],
+  sort = 'popularity',
+  order = 'desc',
+): AnimeData[] => {
+  const sorted = [...anime]
+
+  switch (sort) {
+    case 'score':
+      return sorted.sort((a, b) =>
+        order === 'asc'
+          ? (a.score || 0) - (b.score || 0)
+          : (b.score || 0) - (a.score || 0),
+      )
+    case 'recent':
+      return sorted.sort((a, b) => {
+        const aDate = new Date(a.aired?.from || 0).getTime()
+        const bDate = new Date(b.aired?.from || 0).getTime()
+        return order === 'asc' ? aDate - bDate : bDate - aDate
+      })
+    case 'title':
+      return sorted.sort((a, b) =>
+        order === 'desc'
+          ? b.title.localeCompare(a.title)
+          : a.title.localeCompare(b.title),
+      )
+    case 'popularity':
+    default:
+      // A lower Jikan popularity rank means a more popular title.
+      return sorted.sort((a, b) =>
+        order === 'asc'
+          ? (b.popularity ?? Number.MAX_SAFE_INTEGER) -
+            (a.popularity ?? Number.MAX_SAFE_INTEGER)
+          : (a.popularity ?? Number.MAX_SAFE_INTEGER) -
+            (b.popularity ?? Number.MAX_SAFE_INTEGER),
+      )
+  }
+}
+
+export const fetchMovies = async (page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
+  const safePage = Math.max(1, Math.floor(page))
+  const safeLimit = Math.max(1, Math.min(25, Math.floor(limit)))
+  let url = `anime?type=movie&page=${safePage}&limit=${safeLimit}`
+  url = buildSortParams(url, sort, order)
+  if (!includeNsfw) {
+    url += '&sfw=true'
+  }
+
+  try {
+    const response = await fetchFromApi<AnimeResponse>(
+      url,
+      `movies_${safePage}_${safeLimit}_${includeNsfw}_${sort || 'default'}_${order || 'default'}`,
+    )
+    rememberMovieFallback(response.data)
+    return response
+  } catch {
+    try {
+      // Jikan's cached top endpoint often remains available when its MAL-backed
+      // search endpoint is returning 503/504. It also provides real covers and
+      // the complete paginated movie catalog.
+      const topResponse = await fetchFromApi<AnimeResponse>(
+        `top/anime?type=movie&page=${safePage}&limit=${safeLimit}`,
+        `movies_top_${safePage}_${safeLimit}`,
+      )
+      const safeMovies = includeNsfw
+        ? topResponse.data
+        : topResponse.data.filter(anime => !isNsfwAnime(anime))
+      const response: AnimeResponse = {
+        ...topResponse,
+        data: sortMoviePage(safeMovies, sort, order),
+        pagination: { ...topResponse.pagination },
+      }
+      rememberMovieFallback(response.data)
+      return response
+    } catch {
+      // Both live Jikan listing endpoints are unavailable; use local data below.
+    }
+
+    const fallback = Array.from(
+      new Map(
+        [...getRememberedMovieFallback(), ...CURATED_MOVIE_FALLBACK]
+          .map(anime => [anime.mal_id, anime]),
+      ).values(),
+    ).slice(0, safeLimit)
+
+    const response = createSinglePageResponse(
+      sortMoviePage(fallback, sort, order),
+      safeLimit,
+    )
+    response.pagination.current_page = safePage
+    return response
+  }
+}
+
 export const fetchGenres = async (): Promise<GenresResponse> => {
   return await fetchFromApi<GenresResponse>(`genres/anime`, `genres_anime`)
+}
+
+export const fetchTagsByCategory = async (category: TagCategory): Promise<GenresResponse> => {
+  return await fetchFromApi<GenresResponse>(`genres/anime?filter=${category}`, `tags_${category}`)
 }
 
 export const searchAnime = async (query: string, page = 1, limit = 20, includeNsfw = false): Promise<AnimeResponse> => {
@@ -412,10 +715,40 @@ export const searchAnime = async (query: string, page = 1, limit = 20, includeNs
   const safePage = Math.max(1, Math.min(Math.floor(page), 100))
   const safeLimit = Math.max(1, Math.min(Math.floor(limit), 25))
 
-  const response = await fetchFromApi<AnimeResponse>(
-    `anime?q=${encodeURIComponent(safeQuery)}&page=${safePage}&limit=${safeLimit}`,
-    `search_${safeQuery}_${safePage}_${safeLimit}`
-  )
+  let response: AnimeResponse
+  try {
+    response = await fetchFromApi<AnimeResponse>(
+      `anime?q=${encodeURIComponent(safeQuery)}&page=${safePage}&limit=${safeLimit}`,
+      `search_${safeQuery}_${safePage}_${safeLimit}`
+    )
+  } catch {
+    let fallbackAnime = getRememberedAnimeFallback()
+    try {
+      const fallback = await fetchFromApi<AnimeResponse>(
+        'top/anime?filter=bypopularity&page=1&limit=25',
+        'search_popular_fallback_source'
+      )
+      const mergedAnime = [...fallback.data, ...fallbackAnime]
+      fallbackAnime = Array.from(
+        new Map(mergedAnime.map(anime => [anime.mal_id, anime])).values()
+      )
+      rememberAnimeFallback(fallbackAnime)
+    } catch {
+      // Use the last known-good pool when Jikan is temporarily unavailable.
+    }
+    const normalizedQuery = safeQuery.toLocaleLowerCase()
+    const matches = fallbackAnime.filter(anime => {
+      const searchableTitles = [
+        anime.title,
+        anime.title_english,
+        anime.title_japanese,
+        ...(anime.title_synonyms || []),
+      ]
+      return searchableTitles.some(title => title?.toLocaleLowerCase().includes(normalizedQuery))
+    }).slice(0, safeLimit)
+
+    response = createSinglePageResponse(matches, safeLimit)
+  }
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
@@ -423,10 +756,20 @@ export const searchAnime = async (query: string, page = 1, limit = 20, includeNs
 }
 
 export const fetchSeasonalAnime = async (year: number, season: string, page = 1, limit = 20, includeNsfw = false, sort?: string, order?: string): Promise<AnimeResponse> => {
-  let url = `seasons/${year}/${season}?page=${page}&limit=${limit}`
-  url = buildSortParams(url, sort, order);
+  const currentSeason = getCurrentSeasonInfo()
+  const isCurrentSeason = year === currentSeason.year && season.toLowerCase() === currentSeason.season
+  let url = isCurrentSeason
+    ? `seasons/now?page=${page}&limit=${limit}`
+    : `seasons/${year}/${season}?page=${page}&limit=${limit}`
 
-  const response = await fetchFromApi<AnimeResponse>(url, `seasonal_${year}_${season}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`)
+  if (!isCurrentSeason) {
+    url = buildSortParams(url, sort, order)
+  }
+
+  const response = await fetchFromApi<AnimeResponse>(
+    url,
+    `seasonal_${year}_${season}_${page}_${limit}_${sort || 'default'}_${order || 'default'}`
+  )
   if (!includeNsfw) {
     response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
   }
@@ -480,8 +823,15 @@ export const fetchSeasonalAnimeSorted = async (year: number, season: string, inc
 // Optimized version for landing page - fetches less data but faster
 export const fetchSeasonalAnimeFast = async (year: number, season: string, includeNsfw = false, limit = 10): Promise<AnimeData[]> => {
    try {
-     const response = await fetchSeasonalAnime(year, season, 1, Math.max(limit, 20), includeNsfw)
-     const anime = response.data.slice(0, limit)
+     const response = await fetchFromApi<AnimeResponse>(
+       `seasons/now?page=1&limit=${Math.max(limit, 20)}`,
+       `seasonal_now_1_${Math.max(limit, 20)}`
+     )
+     const filteredAnime = includeNsfw
+       ? response.data
+       : response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
+     rememberAnimeFallback(response.data)
+     const anime = filteredAnime.slice(0, limit)
      return sortAnimeByPopularityAndScore(anime)
    } catch (error) {
      throw error
@@ -527,7 +877,7 @@ export const getOptimizedImageUrl = (anime: AnimeData): string => {
     return anime.images.jpg.image_url;
   }
 
-  return '/placeholder-anime.jpg';
+  return '/placeholder-anime.svg';
 };
 
 // Image preloading utility
@@ -606,18 +956,131 @@ export const formatDate = (dateString?: string): string => {
 }
 
 // Schedule API functions
-export const fetchAnimeSchedule = async (day?: string, includeNsfw = false): Promise<AnimeResponse> => {
-  let url = 'schedules'
+export const WEEKDAYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const
 
-  if (day) {
-    url += `?filter=${day}`
+export type Weekday = (typeof WEEKDAYS)[number]
+export type WeeklyAnimeSchedule = Record<Weekday, AnimeData[]>
+
+const createEmptyWeeklySchedule = (): WeeklyAnimeSchedule => ({
+  monday: [],
+  tuesday: [],
+  wednesday: [],
+  thursday: [],
+  friday: [],
+  saturday: [],
+  sunday: [],
+})
+
+const normalizeBroadcastDay = (day?: string): Weekday | null => {
+  if (!day) return null
+  const normalized = day.trim().toLowerCase().replace(/s$/, '')
+  return WEEKDAYS.includes(normalized as Weekday)
+    ? (normalized as Weekday)
+    : null
+}
+
+const groupAnimeByBroadcastDay = (anime: AnimeData[]): WeeklyAnimeSchedule => {
+  const grouped = createEmptyWeeklySchedule()
+  const seen = new Map<Weekday, Set<number>>(
+    WEEKDAYS.map(day => [day, new Set<number>()]),
+  )
+
+  for (const item of anime) {
+    const day = normalizeBroadcastDay(item.broadcast?.day)
+    if (!day || seen.get(day)?.has(item.mal_id)) continue
+    seen.get(day)?.add(item.mal_id)
+    grouped[day].push(item)
   }
 
-  const response = await fetchFromApi<AnimeResponse>(url, `schedule_${day || 'all'}`)
-  if (!includeNsfw) {
-    response.data = response.data.filter((anime: AnimeData) => !isNsfwAnime(anime))
+  return grouped
+}
+
+const fetchPaginatedAnime = async (
+  endpoint: string,
+  cachePrefix: string,
+  maxPages = 10,
+): Promise<AnimeData[]> => {
+  const firstPage = await fetchFromApi<AnimeResponse>(
+    `${endpoint}?page=1`,
+    `${cachePrefix}_1`,
+  )
+  const anime = [...firstPage.data]
+  const lastPage = Math.min(
+    Math.max(1, firstPage.pagination.last_visible_page),
+    maxPages,
+  )
+
+  for (let page = 2; page <= lastPage; page++) {
+    try {
+      const response = await fetchFromApi<AnimeResponse>(
+        `${endpoint}?page=${page}`,
+        `${cachePrefix}_${page}`,
+      )
+      anime.push(...response.data)
+      if (!response.pagination.has_next_page) break
+    } catch {
+      // Keep the successful pages. Partial live schedule data is more accurate
+      // than reporting every weekday as empty during an upstream outage.
+      break
+    }
   }
-  return response
+
+  return anime
+}
+
+export const fetchWeeklyAnimeSchedule = async (
+  includeNsfw = false,
+): Promise<WeeklyAnimeSchedule> => {
+  const cacheKey = `weekly_schedule_v3_${includeNsfw}`
+  const cached = getCache<WeeklyAnimeSchedule>(cacheKey)
+  if (cached) return cached
+
+  let anime: AnimeData[]
+  try {
+    anime = await fetchPaginatedAnime('schedules', 'schedule_all')
+  } catch {
+    // The schedules parser depends on live MAL availability and frequently
+    // returns 503/504. Current-season entries contain the same broadcast.day
+    // field and provide a reliable official fallback.
+    anime = await fetchPaginatedAnime('seasons/now', 'schedule_season_now')
+
+    const rememberedAiring = getRememberedAnimeFallback().filter(
+      item => item.status === 'Currently Airing' && item.broadcast?.day,
+    )
+    anime = [...anime, ...rememberedAiring]
+  }
+
+  const safeAnime = includeNsfw
+    ? anime
+    : anime.filter(item => !isNsfwAnime(item))
+  const grouped = groupAnimeByBroadcastDay(safeAnime)
+  setCache(cacheKey, grouped, CACHE_TTL.DYNAMIC)
+  return grouped
+}
+
+export const fetchAnimeSchedule = async (
+  day?: string,
+  includeNsfw = false,
+): Promise<AnimeResponse> => {
+  const normalizedDay = day ? normalizeBroadcastDay(day) : null
+  if (day && !normalizedDay) {
+    throw new Error(`Invalid schedule day: ${day}`)
+  }
+
+  const weekly = await fetchWeeklyAnimeSchedule(includeNsfw)
+  const data = normalizedDay
+    ? weekly[normalizedDay]
+    : WEEKDAYS.flatMap(weekday => weekly[weekday])
+
+  return createSinglePageResponse(data, data.length)
 }
 
 // Get anime airing on the next day based on current date

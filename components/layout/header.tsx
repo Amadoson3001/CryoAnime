@@ -59,31 +59,31 @@ const Header: React.FC = () => {
       switch (href) {
         case '/trending':
           // Prefetch first page of seasonal anime matching Trending Page
-          fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
+          await fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
           break
         case '/seasonal':
           // Prefetch first page of seasonal anime matching Seasonal Page
-          fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
+          await fetchSeasonalAnime(year, season, 1, 24, includeNsfw)
           break
         case '/movies':
           // Prefetch movies matching Movies Page
-          fetchMovies(1, 24, includeNsfw, 'popularity', 'desc')
+          await fetchMovies(1, 24, includeNsfw, 'popularity', 'desc')
           break
         case '/top-rated':
           // Prefetch top anime matching Top Rated Page
-          fetchTopAnime(1, 24, includeNsfw)
+          await fetchTopAnime(1, 24, includeNsfw)
           break
         case '/schedule':
           // Prefetch today's schedule for instant load
           const today = new Date()
           const todayDay = today.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
-          fetchAnimeSchedule(todayDay, includeNsfw)
+          await fetchAnimeSchedule(todayDay, includeNsfw)
           break
         default:
           break
       }
-    } catch (e) {
-      console.warn('Prefetch failed:', e)
+    } catch {
+      // Prefetching is optional; route navigation remains fully functional.
     }
   }, [])
 

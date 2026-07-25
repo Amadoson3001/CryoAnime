@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import Pagination from '@/components/Pagination'
@@ -27,6 +27,7 @@ const MoviesPage = () => {
     const [sortBy, setSortBy] = useState('popularity') // Default sort by popularity
     const [sortOrder, setSortOrder] = useState('desc') // Default descending order
     const [isInitialLoad, setIsInitialLoad] = useState(true)
+    const isInitialLoadRef = useRef(true)
 
     const itemsPerPage = 24
 
@@ -45,7 +46,8 @@ const MoviesPage = () => {
             setCurrentPage(page)
 
             // Add a small delay for better UX on initial load
-            if (isInitialLoad) {
+            if (isInitialLoadRef.current) {
+                isInitialLoadRef.current = false
                 setTimeout(() => {
                     setIsInitialLoad(false)
                 }, 300)
@@ -55,7 +57,7 @@ const MoviesPage = () => {
         } finally {
             setLoading(false)
         }
-    }, [sortBy, sortOrder, isInitialLoad])
+    }, [sortBy, sortOrder])
 
     // Initial load
     useEffect(() => {
@@ -66,7 +68,6 @@ const MoviesPage = () => {
     const handleSortChange = (sort: string, order: string) => {
         setSortBy(sort)
         setSortOrder(order)
-        fetchMoviesData(1, sort, order)
     }
 
     // Handle page change
@@ -275,7 +276,7 @@ const MoviesPage = () => {
         <>
             <Header />
             <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-                <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
+                <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
                     {/* Page Header */}
                     <Box mb="8" style={{ textAlign: 'center' }}>
                         <h1 style={{

@@ -189,25 +189,51 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
                             </Text>
                         )}
 
-                        {/* Genres */}
-                        {anime.genres && anime.genres.length > 0 && (
-                            <Flex gap="1" mt="2" wrap="wrap">
-                                {anime.genres.slice(0, 3).map((genre) => (
-                                    <Badge
-                                        key={genre.mal_id}
-                                        size="1"
-                                        variant="soft"
-                                        style={{
-                                            backgroundColor: '#334155',
-                                            color: '#cbd5e1',
-                                            fontSize: '10px'
-                                        }}
-                                    >
-                                        {genre.name}
-                                    </Badge>
-                                ))}
-                            </Flex>
-                        )}
+                        {/* Tags */}
+                        <Flex gap="1" mt="2" wrap="wrap">
+                            {anime.genres?.slice(0, 2).map((genre) => (
+                                <Badge
+                                    key={genre.mal_id}
+                                    size="1"
+                                    variant="soft"
+                                    style={{
+                                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                                        color: '#93c5fd',
+                                        fontSize: '10px'
+                                    }}
+                                >
+                                    {genre.name}
+                                </Badge>
+                            ))}
+                            {anime.themes?.slice(0, 1).map((theme) => (
+                                <Badge
+                                    key={theme.mal_id}
+                                    size="1"
+                                    variant="soft"
+                                    style={{
+                                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                                        color: '#6ee7b7',
+                                        fontSize: '10px'
+                                    }}
+                                >
+                                    {theme.name}
+                                </Badge>
+                            ))}
+                            {anime.demographics?.slice(0, 1).map((demo) => (
+                                <Badge
+                                    key={demo.mal_id}
+                                    size="1"
+                                    variant="soft"
+                                    style={{
+                                        backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                                        color: '#d8b4fe',
+                                        fontSize: '10px'
+                                    }}
+                                >
+                                    {demo.name}
+                                </Badge>
+                            ))}
+                        </Flex>
                     </Box>
 
                     {/* Close button for suggestions */}

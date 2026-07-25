@@ -75,7 +75,7 @@ const SearchContent = () => {
 
   return (
     <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-      <Container size="4" px="4" py={{ initial: '12', md: '10' }} className="page-enter">
+      <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
         {/* Search Header */}
         <Box mb="8">
           <Text as="p" size="8" weight="bold" mb="6" style={{ color: 'white' }}>

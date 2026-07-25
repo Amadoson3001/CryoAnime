@@ -21,13 +21,15 @@ const FeaturedSection = () => {
   const [featuredAnime, setFeaturedAnime] = useState<AnimeData[]>([])
   const [seasonalAnime, setSeasonalAnime] = useState<AnimeData[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [featuredError, setFeaturedError] = useState<string | null>(null)
+  const [seasonalError, setSeasonalError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadFeaturedAnime = async () => {
       try {
         setLoading(true)
-        setError(null)
+        setFeaturedError(null)
+        setSeasonalError(null)
 
         // Get current year and season
         const { year, season } = getCurrentSeasonInfo()
@@ -36,13 +38,26 @@ const FeaturedSection = () => {
         const includeNsfw = getNsfwPreference()
 
         // Fetch both top anime and seasonal anime in parallel using optimized functions
-        const [featuredData, seasonalData] = await Promise.all([
+        const [featuredResult, seasonalResult] = await Promise.allSettled([
           fetchTopAnimeForLanding(includeNsfw),
           fetchSeasonalAnimeForLanding(year, season, includeNsfw, 10)
         ])
 
+        const featuredData = featuredResult.status === 'fulfilled' ? featuredResult.value : []
+        const seasonalData = seasonalResult.status === 'fulfilled' ? seasonalResult.value : []
+
         setFeaturedAnime(featuredData)
         setSeasonalAnime(seasonalData)
+        setFeaturedError(
+          featuredResult.status === 'rejected'
+            ? 'Failed to load top-rated anime. Please try again later.'
+            : null
+        )
+        setSeasonalError(
+          seasonalResult.status === 'rejected'
+            ? 'Failed to load seasonal anime. Please try again later.'
+            : null
+        )
 
         // Preload images for better performance
         if (!shouldSimplify && featuredData.length > 0) {
@@ -50,11 +65,9 @@ const FeaturedSection = () => {
             // Ignore preload errors - not critical for functionality
           })
         }
-      } catch (err) {
-        setError('Failed to load featured anime. Please try again later.')
-        // Log error details only in development
-        if (process.env.NODE_ENV === 'development') {
-        }
+      } catch {
+        setFeaturedError('Failed to load top-rated anime. Please try again later.')
+        setSeasonalError('Failed to load seasonal anime. Please try again later.')
       } finally {
         setLoading(false)
       }
@@ -71,14 +84,14 @@ const FeaturedSection = () => {
       icon: <Trophy className="text-yellow-500" size={24} />,
       data: featuredAnime,
       loading: loading,
-      error: error
+      error: featuredError
     },
     {
       title: 'Popular This Season',
       icon: <Calendar className="text-blue-500" size={24} />,
       data: seasonalAnime,
       loading: loading,
-      error: error
+      error: seasonalError
     }
   ]
 
