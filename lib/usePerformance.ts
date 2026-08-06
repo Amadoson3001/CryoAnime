@@ -2,11 +2,14 @@
 import { useState, useEffect } from 'react'
 
 interface PerformanceInfo {
+  isReady: boolean
   isLowEnd: boolean
   isMobile: boolean
   prefersReducedMotion: boolean
   isPotatoMode: boolean
 }
+
+type NavigatorWithMemory = Navigator & { deviceMemory?: number }
 
 /**
  * Hook for detecting device performance capabilities and user preferences.
@@ -14,64 +17,46 @@ interface PerformanceInfo {
  */
 export function usePerformance(): PerformanceInfo {
   const [info, setInfo] = useState<PerformanceInfo>({
+    isReady: false,
     isLowEnd: false,
     isMobile: false,
     prefersReducedMotion: false,
-    isPotatoMode: false
+    isPotatoMode: false,
   })
 
   useEffect(() => {
     try {
-      // Detect mobile via user agent (cheap check)
-      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-      )
-
-      // Detect low-end device via hardware concurrency and device memory
+      const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       const hardwareConcurrency = navigator.hardwareConcurrency || 4
-      const deviceMemory = (navigator as any).deviceMemory || 4
+      const deviceMemory = (navigator as NavigatorWithMemory).deviceMemory || 4
       const isLowEnd = (hardwareConcurrency < 4 && deviceMemory <= 4) || deviceMemory <= 2
-
-      // Check reduced motion preference
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-      // Check if potato mode is enabled in localStorage
-      const isPotatoMode = localStorage.getItem('cryoanime-potato-mode') === '1'
+      let isPotatoMode = false
+      try {
+        isPotatoMode = localStorage.getItem('cryoanime-potato-mode') === '1'
+      } catch {
+        // Storage can be disabled or unavailable in privacy modes.
+      }
 
-      setInfo({
-        isLowEnd,
-        isMobile,
-        prefersReducedMotion,
-        isPotatoMode
-      })
+      setInfo({ isReady: true, isLowEnd, isMobile, prefersReducedMotion, isPotatoMode })
 
-      // Listen for reduced motion preference changes
       const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
-      const handleChange = (e: MediaQueryListEvent) => {
-        setInfo(prev => ({ ...prev, prefersReducedMotion: e.matches }))
+      const handleChange = (event: MediaQueryListEvent) => {
+        setInfo(prev => ({ ...prev, prefersReducedMotion: event.matches }))
       }
       mediaQuery.addEventListener('change', handleChange)
-
       return () => mediaQuery.removeEventListener('change', handleChange)
     } catch {
-      // Fallback for SSR or errors
-      setInfo({
-        isLowEnd: false,
-        isMobile: false,
-        prefersReducedMotion: false,
-        isPotatoMode: false
-      })
+      setInfo({ isReady: true, isLowEnd: false, isMobile: false, prefersReducedMotion: false, isPotatoMode: false })
     }
   }, [])
 
   return info
 }
 
-/**
- * Lightweight version for components that only need mobile/low-end detection.
- * Returns true if the device should use simplified rendering.
- */
+/** Lightweight version for components that only need simplification state. */
 export function useShouldSimplify(): boolean {
-  const { isLowEnd, isMobile, prefersReducedMotion, isPotatoMode } = usePerformance()
-  return isLowEnd || isMobile || prefersReducedMotion || isPotatoMode
+  const { isReady, isLowEnd, isMobile, prefersReducedMotion, isPotatoMode } = usePerformance()
+  return !isReady || isLowEnd || isMobile || prefersReducedMotion || isPotatoMode
 }

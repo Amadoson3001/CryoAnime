@@ -1,281 +1,298 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
-import { formatScore, formatDate } from '@/lib/api'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const media = (overrides: Record<string, unknown> = {}) => ({
+  id: 100,
+  idMal: 200,
+  type: 'ANIME',
+  format: 'TV',
+  status: 'FINISHED',
+  title: { romaji: 'Example', english: 'Example English', native: '例' },
+  synonyms: [],
+  genres: ['Action'],
+  tags: [{ id: 42, name: 'Time Travel', category: 'theme', rank: 87, isAdult: false }],
+  averageScore: 85,
+  popularity: 1000,
+  favourites: 20,
+  coverImage: { extraLarge: 'https://s4.anilist.co/file/anilistcdn/large.jpg', large: 'https://s4.anilist.co/file/anilistcdn/large.jpg', medium: 'https://s4.anilist.co/file/anilistcdn/medium.jpg' },
+  startDate: { year: 2024, month: 1, day: 2 },
+  endDate: { year: 2024, month: 6, day: 30 },
+  studios: { edges: [] },
+  relations: { edges: [] },
+  rankings: [],
+  ...overrides,
+})
+
+const page = (items: unknown[] = [media()]) => ({
+  Page: {
+    pageInfo: { total: items.length, currentPage: 1, lastPage: 1, hasNextPage: false, perPage: items.length },
+    media: items,
+  },
+})
+
+const mockGraphql = (data: unknown) => {
+  const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ data }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+const mockGraphqlByAdultFlag = (nonAdultItems: unknown[], adultItems: unknown[]) => {
+  const fetchMock = vi.fn().mockImplementation((_url: string, init: RequestInit) => {
+    const request = JSON.parse(String(init.body)) as { variables?: { isAdult?: boolean } }
+    const items = request.variables?.isAdult ? adultItems : nonAdultItems
+    return Promise.resolve(new Response(JSON.stringify({ data: page(items) }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
 
 afterEach(() => {
-  vi.useRealTimers()
+  vi.resetModules()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
-  if (typeof localStorage?.clear === 'function') {
-    localStorage.clear()
-  }
+  vi.unstubAllEnvs()
+  localStorage.clear()
 })
 
-describe('API Utilities', () => {
-  describe('formatScore', () => {
-    it('should format score with 2 decimal places', () => {
-      expect(formatScore(8.5)).toBe('8.50')
-      expect(formatScore(9)).toBe('9.00')
-    })
-
-    it('should return N/A if score is undefined', () => {
-      expect(formatScore(undefined)).toBe('N/A')
-    })
-  })
-
-  describe('formatDate', () => {
-    it('should format valid date strings', () => {
-      // Use toContain because locale formats can vary
-      expect(formatDate('2023-01-01')).toContain('2023')
-      expect(formatDate('2023-01-01')).toContain('January')
-    })
-
-    it('should return N/A for undefined dates', () => {
-      expect(formatDate(undefined)).toBe('N/A')
-    })
+describe('API utilities', () => {
+  it('formats scores and dates for the existing UI', async () => {
+    const { formatScore, formatDate } = await import('@/lib/api')
+    expect(formatScore(8.5)).toBe('8.50')
+    expect(formatScore(undefined)).toBe('N/A')
+    expect(formatDate('2023-01-01')).toContain('January')
+    expect(formatDate(undefined)).toBe('N/A')
   })
 })
 
-describe('Jikan reliability', () => {
-  it('uses the official anime search filters for movie pagination and sorting', async () => {
-    vi.resetModules()
-    const payload = {
-      data: [{ mal_id: 1, title: 'Movie', type: 'Movie' }],
-      pagination: {
-        last_visible_page: 42,
-        has_next_page: true,
-        current_page: 2,
-        items: { count: 1, total: 100, per_page: 24 },
-      },
-    }
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
+describe('AniList GraphQL integration', () => {
+  it('uses the AniList endpoint and normalizes movie results', async () => {
+    const fetchMock = mockGraphql(page([media({ format: 'MOVIE' })]))
     const { fetchMovies } = await import('@/lib/api')
-    const response = await fetchMovies(2, 24, false, 'popularity', 'desc')
+    const response = await fetchMovies(1, 24, false, 'popularity', 'desc')
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/jikan/anime?type=movie&page=2&limit=24&order_by=popularity&sort=asc&sfw=true',
-      expect.objectContaining({
-        headers: { Accept: 'application/json' },
-        signal: expect.any(AbortSignal),
-      }),
-    )
-    expect(response.pagination.last_visible_page).toBe(42)
-    expect(response.data).toEqual(payload.data)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://graphql.anilist.co')
+    const requests = fetchMock.mock.calls.map(call => JSON.parse(call[1].body as string))
+    expect(requests.map(request => request.variables.isAdult)).toEqual([false])
+    expect(requests[0].variables).toMatchObject({ format: ['MOVIE'], isAdult: false })
+    expect(response.data[0]).toMatchObject({ mal_id: 200, anilist_id: 100, title: 'Example English', type: 'Movie', score: 8.5, score_percentage: 85, tags: [{ name: 'Time Travel', rank: 87, category: 'theme' }] })
   })
 
-  it('keeps the movies page useful when Jikan is temporarily unavailable', async () => {
-    vi.useFakeTimers()
-    vi.resetModules()
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({ status: 503, message: 'Service unavailable' }),
-          { status: 503 },
-        ),
-      ),
-    )
+  it('builds a seasonal GraphQL query with AniList season variables', async () => {
+    const fetchMock = mockGraphql(page([media({ season: 'SUMMER', seasonYear: 2018 })]))
+    const { fetchSeasonalAnime } = await import('@/lib/api')
+    const response = await fetchSeasonalAnime(2018, 'summer', 1, 24, false)
 
-    const { fetchMovies } = await import('@/lib/api')
-    const responsePromise = fetchMovies(1, 24, false, 'score', 'desc')
-    await vi.advanceTimersByTimeAsync(1000)
-    const response = await responsePromise
-
-    expect(response.data).toHaveLength(24)
-    expect(response.data.every(anime => anime.type === 'Movie')).toBe(true)
-    expect(
-      response.data.every(anime =>
-        anime.images.jpg.large_image_url.startsWith(
-          'https://cdn.myanimelist.net/',
-        ),
-      ),
-    ).toBe(true)
-    expect(response.pagination.has_next_page).toBe(false)
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(request.variables).toMatchObject({ season: 'SUMMER', seasonYear: 2018, isAdult: false })
+    expect(response.data[0].year).toBe(2018)
   })
 
-  it('uses Jikan top movies when the general movie search returns 504', async () => {
-    vi.useFakeTimers()
-    vi.resetModules()
-    const topPayload = {
-      data: [
-        {
-          mal_id: 57555,
-          title: 'Chainsaw Man Movie: Reze Arc',
-          type: 'Movie',
-          images: {
-            jpg: {
-              image_url: 'https://cdn.myanimelist.net/cover.jpg',
-              small_image_url: 'https://cdn.myanimelist.net/cover.jpg',
-              large_image_url: 'https://cdn.myanimelist.net/cover-large.jpg',
-            },
-          },
-          status: 'Finished Airing',
-          aired: { prop: { from: {}, to: {} } },
-          duration: 'Unknown',
-          genres: [],
-          producers: [],
-          licensors: [],
-          studios: [],
-        },
+  it('searches AniList without a proxy endpoint', async () => {
+    const fetchMock = mockGraphql(page())
+    const { searchAnime } = await import('@/lib/api')
+    await searchAnime('cowboy bebop')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('https://graphql.anilist.co')
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(request.variables.search).toBe('cowboy bebop')
+  })
+
+  it('maps AniList airing timestamps into the weekly schedule contract', async () => {
+    const airingAt = Math.floor(new Date('2026-08-03T12:00:00Z').getTime() / 1000)
+    const fetchMock = mockGraphql(page([media({ status: 'RELEASING', nextAiringEpisode: { airingAt, episode: 4 } })]))
+    const { fetchAnimeSchedule } = await import('@/lib/api')
+    const response = await fetchAnimeSchedule('monday')
+
+    expect(fetchMock.mock.calls[0][0]).toBe('https://graphql.anilist.co')
+    expect(response.data[0].status).toBe('Currently Airing')
+    expect(response.data[0].broadcast?.day?.toLowerCase()).toBe('monday')
+  })
+
+  it('normalizes category prefixes and rejects unsafe streaming URLs', async () => {
+    const sample = media({
+      tags: [
+        { id: 42, name: 'Time Travel', category: 'Theme-Sci-Fi', rank: 87, isAdult: false },
+        { id: 43, name: 'Shounen', category: 'Demographic-Male', rank: 80, isAdult: false },
       ],
-      pagination: {
-        last_visible_page: 211,
-        has_next_page: true,
-        current_page: 1,
-        items: { count: 1, total: 5046, per_page: 24 },
-      },
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 504 }), { status: 504 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(topPayload), { status: 200 }),
-      )
-    vi.stubGlobal('fetch', fetchMock)
+      streamingEpisodes: [
+        { site: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/example' },
+        { site: 'Injected', url: 'javascript:alert(1)' },
+        { site: 'Unknown', url: 'https://evil.example/watch' },
+      ],
+    })
+    const fetchMock = mockGraphql(page([sample]))
+    const { fetchTopAnime } = await import('@/lib/api')
+    const response = await fetchTopAnime()
 
-    const { fetchMovies } = await import('@/lib/api')
-    const responsePromise = fetchMovies(1, 24, false, 'score', 'desc')
-    await vi.advanceTimersByTimeAsync(1000)
-    const response = await responsePromise
-
-    expect(fetchMock.mock.calls[1][0]).toBe(
-      '/api/jikan/top/anime?type=movie&page=1&limit=24',
-    )
-    expect(response.data[0].images.jpg.large_image_url).toContain(
-      'cdn.myanimelist.net',
-    )
-    expect(response.pagination.last_visible_page).toBe(211)
-    expect(response.pagination.items.total).toBe(5046)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(response.data[0].themes).toEqual([expect.objectContaining({ name: 'Time Travel' })])
+    expect(response.data[0].demographics).toEqual([expect.objectContaining({ name: 'Shounen' })])
+    expect(response.data[0].members).toBeUndefined()
+    expect(response.data[0].streaming).toEqual([{ name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/example' }])
   })
 
-  it('retries a transient upstream 503 in the same-origin proxy', async () => {
-    vi.useFakeTimers()
-    vi.resetModules()
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 503 }), { status: 503 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ data: [] }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      )
-    vi.stubGlobal('fetch', fetchMock)
+  it('keeps explicit and mature content separate', async () => {
+    const mature = media({
+      id: 101,
+      idMal: 201,
+      tags: [{ id: 43, name: 'Ecchi', category: 'theme', rank: 90, isAdult: false }],
+    })
+    const explicit = media({
+      id: 102,
+      idMal: 202,
+      isAdult: false,
+      genres: ['Hentai'],
+      tags: [{ id: 44, name: 'Hentai', category: 'content', rank: 100, isAdult: true }],
+    })
+    const fetchMock = mockGraphql(page([mature, explicit]))
+    const { fetchTopAnime } = await import('@/lib/api')
+    const response = await fetchTopAnime(1, 24, { showMature: true, showExplicit: false })
 
-    const { GET } = await import('@/app/api/jikan/[...path]/route')
-    const request = {
-      nextUrl: new URL('http://localhost/api/jikan/anime?type=movie'),
-    }
-    const responsePromise = GET(
-      request as never,
-      { params: Promise.resolve({ path: ['anime'] }) },
-    )
-    await vi.advanceTimersByTimeAsync(1000)
-    const response = await responsePromise
+    expect(fetchMock.mock.calls[0][1]).toBeDefined()
+    const request = JSON.parse(fetchMock.mock.calls[0][1].body as string)
+    expect(request.variables.isAdult).toBe(false)
+    expect(response.data).toHaveLength(1)
+    expect(response.data[0]).toMatchObject({ contentRating: 'mature', rating: 'R+ - Mild Nudity', isAdult: false })
+  })
 
-    expect(response.status).toBe(200)
+  it('maps AniList adult signals to explicit Rx content', async () => {
+    mockGraphql(page([media({ isAdult: true, tags: [{ id: 44, name: 'Hentai', category: 'content', isAdult: true }] })]))
+    const { fetchTopAnime } = await import('@/lib/api')
+    const response = await fetchTopAnime(1, 24, { showMature: false, showExplicit: true })
+
+    expect(response.data[0]).toMatchObject({ contentRating: 'explicit', rating: 'Rx - Hentai', isAdult: true })
+  })
+
+  it('uses the Hentai genre rather than broad AniList adult signals', async () => {
+    const tolerableAdult = media({
+      id: 103,
+      idMal: 203,
+      isAdult: true,
+      genres: ['Action', 'Ecchi'],
+      tags: [{ id: 45, name: 'Rape', category: 'Sexual Content', rank: 70, isAdult: true }],
+    })
+    const hentai = media({
+      id: 104,
+      idMal: 204,
+      isAdult: false,
+      genres: ['Hentai'],
+      tags: [{ id: 46, name: 'Nudity', category: 'Cast-Traits', rank: 90, isAdult: false }],
+    })
+    const fetchMock = mockGraphqlByAdultFlag([tolerableAdult], [hentai])
+    const { fetchTopAnime } = await import('@/lib/api')
+    const response = await fetchTopAnime(1, 24, { showMature: true, showExplicit: true })
+
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock.mock.calls[0][0].toString()).toBe(
-      'https://api.jikan.moe/v4/anime?type=movie',
-    )
+    expect(response.data).toHaveLength(2)
+    expect(response.data.find(anime => anime.anilist_id === 103)).toMatchObject({ contentRating: 'mature', isAdult: true })
+    expect(response.data.find(anime => anime.anilist_id === 104)).toMatchObject({ contentRating: 'explicit', rating: 'Rx - Hentai' })
   })
 
-  it('builds Wednesday schedule from current-season data when schedules returns 504', async () => {
-    vi.useFakeTimers()
-    vi.resetModules()
-    const createScheduledAnime = (id: number, day: string) => ({
-      mal_id: id,
-      title: `Anime ${id}`,
-      type: 'TV',
-      images: {
-        jpg: {
-          image_url: 'https://cdn.myanimelist.net/image.jpg',
-          small_image_url: 'https://cdn.myanimelist.net/image.jpg',
-          large_image_url: 'https://cdn.myanimelist.net/image.jpg',
-        },
-      },
-      status: 'Currently Airing',
-      aired: { prop: { from: {}, to: {} } },
-      broadcast: { day },
-      duration: '24 min',
-      genres: [],
-      producers: [],
-      licensors: [],
-      studios: [],
+  it('does not hide non-Hentai adult-tagged titles when explicit content is disabled', async () => {
+    const tolerableAdult = media({
+      id: 105,
+      idMal: 205,
+      isAdult: true,
+      genres: ['Action'],
+      tags: [{ id: 47, name: 'Rape', category: 'Sexual Content', rank: 70, isAdult: true }],
     })
-    const seasonPayload = {
-      data: [
-        createScheduledAnime(1, 'Wednesdays'),
-        createScheduledAnime(2, 'Mondays'),
-      ],
-      pagination: {
-        last_visible_page: 3,
-        has_next_page: true,
-        current_page: 1,
-        items: { count: 2, total: 2, per_page: 25 },
-      },
-    }
-    const secondSeasonPage = {
-      data: [createScheduledAnime(3, 'Wednesdays')],
-      pagination: {
-        last_visible_page: 3,
-        has_next_page: true,
-        current_page: 2,
-        items: { count: 1, total: 3, per_page: 25 },
-      },
-    }
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 504 }), { status: 504 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(seasonPayload), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify(secondSeasonPage), { status: 200 }),
-      )
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({ status: 504 }), { status: 504 }),
-      )
-    vi.stubGlobal('fetch', fetchMock)
+    mockGraphqlByAdultFlag([], [tolerableAdult])
+    const { fetchTopAnime } = await import('@/lib/api')
+    const response = await fetchTopAnime(1, 24, { showMature: true, showExplicit: false })
 
-    const { fetchAnimeSchedule } = await import('@/lib/api')
-    const responsePromise = fetchAnimeSchedule('wednesday')
-    await vi.advanceTimersByTimeAsync(3000)
-    const response = await responsePromise
-
-    expect(fetchMock.mock.calls[0][0]).toBe(
-      '/api/jikan/schedules?page=1',
-    )
-    expect(fetchMock.mock.calls[1][0]).toBe(
-      '/api/jikan/seasons/now?page=1',
-    )
-    expect(fetchMock.mock.calls[2][0]).toBe(
-      '/api/jikan/seasons/now?page=2',
-    )
-    expect(fetchMock.mock.calls[3][0]).toBe(
-      '/api/jikan/seasons/now?page=3',
-    )
-    expect(response.data.map(anime => anime.mal_id)).toEqual([1, 3])
+    expect(response.data).toHaveLength(1)
+    expect(response.data[0]).toMatchObject({ contentRating: 'mature', isAdult: true })
   })
 
-  it('rejects invalid schedule weekday values instead of returning fake empty data', async () => {
-    vi.resetModules()
-    const { fetchAnimeSchedule } = await import('@/lib/api')
+  it('exposes Hentai and every AniList adult tag in the explicit Explore category', async () => {
+    mockGraphql({
+      MediaTagCollection: [
+        { id: 279, name: 'Ahegao', category: 'Sexual Content', isAdult: true },
+        { id: 533, name: 'Omegaverse', category: 'Setting-Universe', isAdult: true },
+        { id: 42, name: 'Time Travel', category: 'Theme-Sci-Fi', isAdult: false },
+      ],
+    })
+    const { fetchTagsByCategory } = await import('@/lib/api')
+    const response = await fetchTagsByCategory('explicit_genres')
 
-    await expect(fetchAnimeSchedule('not-a-day')).rejects.toThrow(
-      'Invalid schedule day',
-    )
+    expect(response.data).toEqual([
+      expect.objectContaining({ name: 'Hentai', filterKind: 'genre', isAdult: true }),
+      expect.objectContaining({ name: 'Ahegao', filterKind: 'tag', isAdult: true }),
+      expect.objectContaining({ name: 'Omegaverse', filterKind: 'tag', isAdult: true }),
+    ])
+    expect(response.data).not.toContainEqual(expect.objectContaining({ name: 'Time Travel' }))
+  })
+
+  it('reuses the cached AniList tag collection across categories', async () => {
+    const fetchMock = mockGraphql({
+      MediaTagCollection: [
+        { id: 1, name: 'Time Travel', category: 'Theme-Sci-Fi', isAdult: false },
+        { id: 2, name: 'Shounen', category: 'Demographic-Male', isAdult: false },
+      ],
+    })
+    const { fetchTagsByCategory } = await import('@/lib/api')
+    await fetchTagsByCategory('themes')
+    await fetchTagsByCategory('demographics')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not enqueue an already-aborted search', async () => {
+    const fetchMock = mockGraphql(page())
+    const { searchAnime } = await import('@/lib/api')
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(searchAnime('stale query', 1, 20, false, controller.signal)).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('loads details and characters through AniList media queries', async () => {
+    const fetchMock = mockGraphql({ Media: media({ characters: { edges: [] } }) })
+    const { fetchAnimeById, fetchAnimeCharacters } = await import('@/lib/api')
+    const details = await fetchAnimeById(200)
+    const characters = await fetchAnimeCharacters(200)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(details.data.title).toBe('Example English')
+    expect(characters.data).toEqual([])
+  })
+})
+
+describe('cache migration', () => {
+  it('keeps compatibility responses in memory without browser persistence', async () => {
+    const { getCache, setCache } = await import('@/lib/cache')
+    setCache('top_anime_current', { data: ['fresh'] }, 10000)
+
+    expect(getCache('top_anime_current')).toEqual({ data: ['fresh'] })
+    expect(localStorage.getItem('cryoanime:anilist:v1:top_anime_current')).toBeNull()
+  })
+})
+
+describe('content preferences', () => {
+  it('migrates the legacy NSFW switch and persists independent choices', async () => {
+    localStorage.setItem('nsfw_enabled', 'true')
+    const { getContentPreferences, setContentPreferences } = await import('@/lib/userPreferences')
+
+    expect(getContentPreferences()).toEqual({ showMature: true, showExplicit: true })
+    setContentPreferences({ showMature: true, showExplicit: false })
+    expect(getContentPreferences()).toEqual({ showMature: true, showExplicit: false })
+    expect(localStorage.getItem('nsfw_enabled')).toBeNull()
+  })
+})
+
+describe('library storage', () => {
+  it('ignores malformed records and deduplicates bounded entries', async () => {
+    localStorage.setItem('cryoanime_favorites', JSON.stringify([
+      null,
+      { mal_id: 'not-a-number', title: 'bad' },
+      { mal_id: 42, title: 'First', images: { jpg: { image_url: '/one.svg' } }, added_at: 1 },
+      { mal_id: 42, title: 'Duplicate', images: { jpg: { image_url: '/two.svg' } }, added_at: 2 },
+    ]))
+    const { getFavorites } = await import('@/lib/library')
+
+    expect(getFavorites()).toHaveLength(1)
+    expect(getFavorites()[0]).toMatchObject({ mal_id: 42, title: 'First', added_at: 1 })
+    expect(getFavorites()[0].images.jpg.small_image_url).toBe('/one.svg')
   })
 })

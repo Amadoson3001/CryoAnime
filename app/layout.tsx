@@ -2,15 +2,34 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { Theme } from '@radix-ui/themes'
-import '@radix-ui/themes/styles.css'
-import Script from 'next/script'
+import { Theme } from '@/components/ui-primitives'
 import { Suspense } from 'react'
 import CookieConsent from '@/components/cookie-consent'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
+import { ContentPreferenceProvider } from '@/components/content-preference-provider'
+import { DEFAULT_CONTENT_PREFERENCES } from '@/lib/contentRatings'
 
 import Live2dWaifuWrapper from '@/components/Live2dWaifuWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
+
+function ApplicationFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <a className="skip-link" href="#page-content">Skip to content</a>
+      <Header />
+      <div id="page-content" tabIndex={-1}>{children}</div>
+      <Footer />
+      <Suspense fallback={null}>
+        <Live2dWaifuWrapper />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CookieConsent />
+      </Suspense>
+    </>
+  )
+}
 
 export const metadata: Metadata = {
   title: 'CryoAnime - Discover Your Next Favorite Anime',
@@ -39,7 +58,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
@@ -48,16 +67,8 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={inter.className}
-        style={{ backgroundColor: '#0f172a', color: '#f1f5f9' }}
       >
-        {/* Minimal theme guard to avoid extra runtime work */}
-        <Script src="/theme-guard.js" strategy="beforeInteractive" />
-
-        {/* Potato-mode: if user previously opted into ultra-low effects, apply class ASAP */}
-        {/* Also auto-enable for mobile and low-end devices on first visit */}
-        <Script src="/potato-mode.js" strategy="beforeInteractive" />
-
-        {/* Keep Radix Theme but avoid dynamic props that could cause re-renders */}
+        {/* Keep theme values stable so the shell can hydrate without layout shifts. */}
         <Theme
           accentColor="blue"
           grayColor="slate"
@@ -65,16 +76,9 @@ export default function RootLayout({
           radius="large"
           scaling="100%"
         >
-          {children}
-
-          {/* Defer non-critical, heavy UI to reduce initial main-thread work */}
-          <Suspense fallback={null}>
-            <Live2dWaifuWrapper />
-          </Suspense>
-
-          <Suspense fallback={null}>
-            <CookieConsent />
-          </Suspense>
+          <ContentPreferenceProvider initial={DEFAULT_CONTENT_PREFERENCES}>
+            <ApplicationFrame>{children}</ApplicationFrame>
+          </ContentPreferenceProvider>
         </Theme>
       </body>
     </html>

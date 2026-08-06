@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic'
 import { useShouldSimplify } from '@/lib/usePerformance'
 
-const Live2dWaifu = dynamic(() => import('@/components/live2d-waifu'), {
+const Live2dWaifu = dynamic(() => import('@/components/waifu2d'), {
     ssr: false,
     loading: () => null
 })

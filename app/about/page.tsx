@@ -1,8 +1,3 @@
-'use client'
-
-import React from 'react'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
 import {
     Container,
     Flex,
@@ -12,11 +7,9 @@ import {
     Grid,
     Badge,
     Button,
-    Separator
-} from '@radix-ui/themes'
+} from '@/components/ui-primitives'
 import {
     Github,
-    ExternalLink,
     Code,
     Palette,
     Database,
@@ -31,7 +24,7 @@ import {
 
 const AboutPage = () => {
     const skills = [
-        { category: 'Frontend', items: ['React', 'Next.js', 'TypeScript', 'Tailwind CSS', 'Radix UI'] },
+        { category: 'Frontend', items: ['React', 'Next.js', 'TypeScript', 'CSS', 'Accessible UI'] },
         { category: 'Backend', items: ['Node.js', 'Express', 'Python', 'PostgreSQL', 'MongoDB'] },
         { category: 'Tools', items: ['Git', 'Docker', 'AWS', 'Vercel', 'Figma'] },
         { category: 'Design', items: ['UI/UX Design', 'Responsive Design', 'Animation', 'Prototyping'] }
@@ -46,7 +39,6 @@ const AboutPage = () => {
 
     return (
         <>
-            <Header />
             <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
                 {/* Hero Section */}
                 <Box
@@ -142,7 +134,7 @@ const AboutPage = () => {
 
                             {/* CTA Buttons */}
                             <Flex gap="4" style={{ animation: 'slideUp 1s ease-out 0.8s both' }}>
-                                <Button
+                                <Button asChild
                                     size="3"
                                     style={{
                                         backgroundColor: '#3b82f6',
@@ -153,19 +145,13 @@ const AboutPage = () => {
                                         transition: 'all 0.3s ease',
                                         cursor: 'pointer'
                                     }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)'
-                                        e.currentTarget.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.boxShadow = 'none'
-                                    }}
                                 >
-                                    <Github size={18} style={{ marginRight: '0.5rem' }} />
-                                    View GitHub
+                                    <a href="https://github.com/Mtechsin" target="_blank" rel="noopener noreferrer">
+                                        <Github size={18} style={{ marginRight: '0.5rem' }} />
+                                        View GitHub
+                                    </a>
                                 </Button>
-                                <Button
+                                <Button asChild
                                     size="3"
                                     variant="outline"
                                     style={{
@@ -177,20 +163,11 @@ const AboutPage = () => {
                                         transition: 'all 0.3s ease',
                                         cursor: 'pointer'
                                     }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#3b82f6'
-                                        e.currentTarget.style.color = 'white'
-                                        e.currentTarget.style.transform = 'translateY(-2px)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.color = '#3b82f6'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                    }}
-                                    onClick={() => window.open('https://github.com/Mtechsin', '_blank')}
                                 >
-                                    <Mail size={18} style={{ marginRight: '0.5rem' }} />
-                                    Get In Touch
+                                    <a href="mailto:amadoson3001@gmail.com">
+                                        <Mail size={18} style={{ marginRight: '0.5rem' }} />
+                                        Get In Touch
+                                    </a>
                                 </Button>
                             </Flex>
                         </Flex>
@@ -282,14 +259,6 @@ const AboutPage = () => {
                                                 transition: 'all 0.3s ease',
                                                 cursor: 'default'
                                             }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.transform = 'scale(1.05)'
-                                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.2)'
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.transform = 'scale(1)'
-                                                e.currentTarget.style.boxShadow = 'none'
-                                            }}
                                         >
                                             {skill}
                                         </Badge>
@@ -327,7 +296,7 @@ const AboutPage = () => {
                             Whether you have a project in mind or just want to connect, feel free to reach out!
                         </Text>
                         <Flex gap="4" justify="center" wrap="wrap">
-                            <Button
+                            <Button asChild
                                 size="3"
                                 style={{
                                     backgroundColor: '#3b82f6',
@@ -338,20 +307,13 @@ const AboutPage = () => {
                                     transition: 'all 0.3s ease',
                                     cursor: 'pointer'
                                 }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(-2px)'
-                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'translateY(0)'
-                                    e.currentTarget.style.boxShadow = 'none'
-                                }}
-                                onClick={() => window.open('mailto:amadoson3001@gmail.com', '_blank')}
                             >
-                                <Mail size={18} style={{ marginRight: '0.5rem' }} />
-                                Send Message
+                                <a href="mailto:amadoson3001@gmail.com">
+                                    <Mail size={18} style={{ marginRight: '0.5rem' }} />
+                                    Send Message
+                                </a>
                             </Button>
-                            <Button
+                            <Button asChild
                                 size="3"
                                 variant="outline"
                                 style={{
@@ -363,58 +325,17 @@ const AboutPage = () => {
                                     transition: 'all 0.3s ease',
                                     cursor: 'pointer'
                                 }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#3b82f6'
-                                    e.currentTarget.style.color = 'white'
-                                    e.currentTarget.style.transform = 'translateY(-2px)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                    e.currentTarget.style.color = '#3b82f6'
-                                    e.currentTarget.style.transform = 'translateY(0)'
-                                }}
-                                onClick={() => window.open('https://github.com/Mtechsin', '_blank')}
                             >
-                                <Github size={18} style={{ marginRight: '0.5rem' }} />
-                                View Projects
+                                <a href="https://github.com/Mtechsin" target="_blank" rel="noopener noreferrer">
+                                    <Github size={18} style={{ marginRight: '0.5rem' }} />
+                                    View Projects
+                                </a>
                             </Button>
                         </Flex>
                     </Card>
                 </Container>
             </main>
-            <Footer />
 
-            {/* Custom CSS for animations */}
-            <style jsx>{`
-        @keyframes slideUp {
-          from {
-            transform: translateY(30px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0px);
-          }
-          50% {
-            transform: translateY(-10px);
-          }
-        }
-
-        @keyframes pulse {
-          0%, 100% {
-            box-shadow: 0 0 40px rgba(59, 130, 246, 0.3);
-          }
-          50% {
-            box-shadow: 0 0 60px rgba(59, 130, 246, 0.5);
-          }
-        }
-      `}</style>
         </>
     )
 }

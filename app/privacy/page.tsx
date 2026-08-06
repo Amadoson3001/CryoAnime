@@ -1,8 +1,3 @@
-'use client'
-
-import React from 'react'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
 import {
     Container,
     Flex,
@@ -11,7 +6,7 @@ import {
     Card,
     Heading,
     Separator
-} from '@radix-ui/themes'
+} from '@/components/ui-primitives'
 import {
     Shield,
     Lock,
@@ -22,11 +17,10 @@ import {
 } from 'lucide-react'
 
 const PrivacyPage = () => {
-    const currentYear = new Date().getUTCFullYear()
+    const currentYear = 2026
 
     return (
         <>
-            <Header />
             <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
                 {/* Hero Section */}
                 <Box
@@ -95,9 +89,9 @@ const PrivacyPage = () => {
                                         We Only Store Locally:
                                     </Heading>
                                     <ul style={{ color: '#cbd5e1', lineHeight: '1.6', paddingLeft: '1.5rem' }}>
-                                        <li><strong>NSFW Content Preference:</strong> Your choice to view or hide NSFW content, stored locally in your browser</li>
+                                        <li><strong>Content Preferences:</strong> Your choices to show or hide Mature and Explicit content, stored in a 30-day secure preference cookie</li>
                                         <li><strong>Favorites & Watchlist:</strong> Your saved anime lists, stored locally in your browser</li>
-                                        <li><strong>Cache Data:</strong> Anime information temporarily cached for better performance</li>
+                                        <li><strong>Cache Data:</strong> Anime information temporarily cached on the server for better performance</li>
                                     </ul>
                                 </Box>
                             </Flex>
@@ -115,17 +109,17 @@ const PrivacyPage = () => {
                                 </Text>
                                 <Box style={{ backgroundColor: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid #334155' }}>
                                     <Text size="3" weight="bold" style={{ color: '#60a5fa', marginBottom: '0.5rem' }}>
-                                        NSFW Preference Cookie
+                                        Content Preference Cookies
                                     </Text>
                                     <Text size="3" style={{ color: '#cbd5e1' }}>
-                                        <strong>Purpose:</strong> Remembers your NSFW content display preference<br />
-                                        <strong>Storage:</strong> Browser cookie and localStorage<br />
+                                        <strong>Purpose:</strong> Remembers your Mature and Explicit content display choices<br />
+                                        <strong>Storage:</strong> HTTP-only preference cookie; favorites and watchlist remain in browser storage<br />
                                         <strong>Expiry:</strong> 30 days (automatically expires)<br />
                                         <strong>Usage:</strong> Filters anime content based on your preference
                                     </Text>
                                 </Box>
                                 <Text size="4" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
-                                    You can clear these cookies at any time through your browser settings, which will simply reset your NSFW preference.
+                                        You can clear these cookies at any time through your browser settings, which will simply reset your content preferences.
                                 </Text>
                             </Flex>
                         </Card>
@@ -143,10 +137,10 @@ const PrivacyPage = () => {
                                 <Box style={{ backgroundColor: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid #334155' }}>
                                     <Flex align="center" gap="2" mb="2">
                                         <Text size="4" weight="bold" style={{ color: '#60a5fa' }}>
-                                            Jikan API (MyAnimeList API)
+                                            AniList GraphQL API
                                         </Text>
                                         <a
-                                            href="https://jikan.moe/"
+                                            href="https://anilist.co/"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             style={{ color: '#3b82f6', textDecoration: 'none' }}
@@ -155,7 +149,7 @@ const PrivacyPage = () => {
                                         </a>
                                     </Flex>
                                     <Text size="3" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
-                                        We fetch anime data from Jikan API, which is a free, open-source API for MyAnimeList data.
+                                        We fetch anime data from AniList&apos;s public GraphQL API, which provides anime metadata and artwork.
                                         The API may collect anonymous usage statistics, but we don&apos;t receive or store any of this data.
                                         Your searches and browsing activity are not tracked or shared.
                                     </Text>
@@ -171,7 +165,7 @@ const PrivacyPage = () => {
                             </Flex>
                             <Text size="4" style={{ color: '#cbd5e1', lineHeight: '1.6' }}>
                                 Since we don&apos;t collect personal data, there are no user accounts to secure or personal information to protect.
-                                Any data stored locally on your device (NSFW preferences) remains under your control and can be cleared anytime.
+                                Any favorites or watchlist data stored locally on your device remains under your control and can be cleared anytime; content preferences are reset by rejecting consent or clearing the preference cookie.
                             </Text>
                         </Card>
 
@@ -204,7 +198,6 @@ const PrivacyPage = () => {
                     </Flex>
                 </Container>
             </main>
-            <Footer />
         </>
     )
 }

@@ -2,26 +2,9 @@
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// Content Security Policy
-// - Allows self-hosted resources + CDN/fonts used by the app
-// - 'unsafe-inline' for styles is needed for Radix UI & Tailwind runtime styles
-// - YouTube embeds are allowed for anime trailers
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fastly.jsdelivr.net;
-  font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' data: blob: https://cdn.myanimelist.net https://myanimelist.net https://img.youtube.com https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
-  media-src 'self';
-  connect-src 'self' https://api.jikan.moe https://api.myanimelist.net https://cdn.jsdelivr.net https://fastly.jsdelivr.net;
-  frame-src https://www.youtube.com https://youtube.com;
-  frame-ancestors 'none';
-  form-action 'self';
-  base-uri 'self';
-  object-src 'none';
-  upgrade-insecure-requests;
-`.replace(/\s{2,}/g, ' ').trim()
-
+// CSP is applied by proxy.ts so it stays compatible with Cache Components'
+// streamed resume scripts. Static security headers remain here and apply
+// consistently to pages and assets.
 const securityHeaders = [
   // --- Anti-clickjacking ---
   {
@@ -63,14 +46,19 @@ const securityHeaders = [
     value:
       'camera=(), microphone=(), geolocation=(), interest-cohort=(), payment=(), usb=()',
   },
-  // --- Content Security Policy ---
-  {
-    key: 'Content-Security-Policy',
-    value: ContentSecurityPolicy,
-  },
 ]
 
 const nextConfig = {
+  // Cache Components is the Next 16 server-rendering model. The custom
+  // profiles mirror the AniList freshness policy and keep cache keys isolated
+  // by operation and sanitized variables.
+  cacheComponents: true,
+  cacheLife: {
+    anilistSearch: { stale: 900, revalidate: 300, expire: 3600 },
+    anilistList: { stale: 3600, revalidate: 900, expire: 7 * 24 * 60 * 60 },
+    anilistSchedule: { stale: 3600, revalidate: 3600, expire: 7 * 24 * 60 * 60 },
+    anilistDetails: { stale: 24 * 60 * 60, revalidate: 24 * 60 * 60, expire: 30 * 24 * 60 * 60 },
+  },
   // Apply security headers to all routes
   async headers() {
     return [
@@ -82,20 +70,16 @@ const nextConfig = {
   },
 
   images: {
-    // Keep unoptimized to pass through external images from MAL/CDN directly
-    unoptimized: true,
+    // Let Next.js resize and cache AniList artwork. Serving every grid card's
+    // original large cover made mobile pages download far more data than the
+    // rendered dimensions require.
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'cdn.myanimelist.net',
+        hostname: 's4.anilist.co',
         port: '',
-        pathname: '/images/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'myanimelist.net',
-        port: '',
-        pathname: '/images/**',
+        pathname: '/file/anilistcdn/**',
       },
     ],
     // Optimized device sizes for responsive images
@@ -104,6 +88,10 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     // Prefer WebP for better compression
     formats: ['image/webp'],
+    // Keep the qualities used by the card components explicit. This also
+    // prevents arbitrary image-quality variants from bypassing the optimizer
+    // cache and is required by newer Next.js releases.
+    qualities: [65, 75],
     // Limit image optimization to known safe domains
     dangerouslyAllowSVG: false,
     contentDispositionType: 'attachment',

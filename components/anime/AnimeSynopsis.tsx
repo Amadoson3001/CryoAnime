@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Text, Button, Box } from '@radix-ui/themes'
+import { Text, Button, Box } from '@/components/ui-primitives'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 
 interface AnimeSynopsisProps {

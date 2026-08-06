@@ -9,6 +9,9 @@
 # Testing
 /coverage
 *.lcov
+*_trace.json
+/test-results
+/playwright-report
 
 # Next.js
 /.next/

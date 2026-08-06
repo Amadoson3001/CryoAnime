@@ -1,0 +1,161 @@
+{
+  "time": [
+    {
+      "hour": "5-11",
+      "text": "Good morning, Senpai!"
+    },
+    {
+      "hour": "12-17",
+      "text": "Good afternoon, Senpai!"
+    },
+    {
+      "hour": "18-22",
+      "text": "Good evening, Senpai!"
+    },
+    {
+      "hour": "23",
+      "text": "Binge-watching late tonight, Senpai?"
+    },
+    {
+      "hour": "0-4",
+      "text": "Binge-watching late tonight, Senpai?"
+    }
+  ],
+  "message": {
+    "default": [
+      "Welcome to CryoAnime, Senpai!",
+      "Find your next favorite anime on CryoAnime!"
+    ],
+    "welcome": "Welcome to CryoAnime, Senpai!",
+    "referrer": "Welcome, visitor from $1!",
+    "hoverBody": [
+      "That tickles, Senpai!"
+    ],
+    "tapBody": [
+      "Kyaaa! Please be gentle!"
+    ],
+    "console": "The Live2D helper is ready.",
+    "copy": "Copied! Now go discover some anime.",
+    "visibilitychange": "Welcome back, Senpai!"
+  },
+  "models": [],
+  "mouseover": [
+    {
+      "selector": "#waifu-tool-photo",
+      "text": [
+        "Taking a screenshot of me, Senpai? Cheese! 📸✨",
+        "Let's take a photo together! Smile! 😄",
+        "Make sure to get my best angle, Senpai!"
+      ]
+    },
+    {
+      "selector": "#waifu-tool-info",
+      "text": [
+        "Want to learn more about CryoAnime? ❄️",
+        "Check out our features and custom anime schedule!",
+        "Curious about how I work? I'm powered by Live2D technology!"
+      ]
+    },
+    {
+      "selector": "#waifu-tool-quit",
+      "text": [
+        "Is it time to say goodbye, Senpai? 🥺",
+        "Don't leave me alone for too long! QAQ",
+        "Come back soon to watch more anime!",
+        "Hmph! You'll miss me, Senpai! 😤"
+      ]
+    },
+    {
+      "selector": "a[href='/']",
+      "text": [
+        "Click here to head back to the Home page! 🏠",
+        "Taking us back home, Senpai?"
+      ]
+    },
+    {
+      "selector": "a[href^='/trending']",
+      "text": [
+        "Check out the hottest anime trending right now! 🔥",
+        "Want to see what everyone is watching?"
+      ]
+    },
+    {
+      "selector": "a[href^='/schedule']",
+      "text": [
+        "See when new episodes air live on the Schedule page! 🗓️"
+      ]
+    },
+    {
+      "selector": "a[href^='/seasonal']",
+      "text": [
+        "Discover this season's brand new anime releases! 🌸"
+      ]
+    },
+    {
+      "selector": "a[href^='/library']",
+      "text": [
+        "Access your saved favorites and watchlist in your Library! 📚"
+      ]
+    },
+    {
+      "selector": "a[href^='/movies']",
+      "text": [
+        "Browse top anime films for your next movie night! 🍿"
+      ]
+    },
+    {
+      "selector": "a[href^='/top-rated']",
+      "text": [
+        "Explore the highest-rated anime masterpieces! ⭐"
+      ]
+    },
+    {
+      "selector": "a[href^='/Explore']",
+      "text": [
+        "Filter anime by genres and tags to discover hidden gems! 🏷️"
+      ]
+    },
+    {
+      "selector": ".nsfw-toggle-btn, .mobile-nsfw-row",
+      "text": [
+        "Toggle family-friendly mode with this shield button! 🛡️"
+      ]
+    },
+    {
+      "selector": "input[type='text'], input[type='search']",
+      "text": [
+        "Looking for a specific anime? Type away, Senpai! 🔍",
+        "What show are we searching for today?"
+      ]
+    }
+  ],
+  "click": [
+    {
+      "selector": "#live2d",
+      "text": [
+        "Kyaaa! That tickles, Senpai! (*/ω＼*)",
+        "Please don't poke me there... unless you're buying snacks! 🍩",
+        "Focus, Senpai! We have an anime list to finish! 😤",
+        "Senpai! Stop poking me or I'll recommend a 100-episode anime! 🙈💢"
+      ]
+    }
+  ],
+  "seasons": [
+    {
+      "date": "01/01",
+      "text": "Happy New Year, Senpai! May this year be full of legendary anime! 🎆✨"
+    },
+    {
+      "date": "02/14",
+      "text": "Happy Valentine's Day, Senpai! Did you get any chocolates? 🍫💖"
+    },
+    {
+      "date": "10/31",
+      "text": "Happy Halloween! Time for some spooky horror anime! 🎃👻"
+    },
+    {
+      "date": "12/25",
+      "text": "Merry Christmas, Senpai! Stay cozy and watch some holiday anime! 🎄🎁"
+    }
+  ]
+}

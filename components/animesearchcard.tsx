@@ -1,8 +1,9 @@
 'use client'
 import React from 'react'
 import Image from 'next/image'
-import { Star, Calendar, Clock, PlayCircle, Search, X } from 'lucide-react'
-import { AnimeData, formatScore, formatDate, getOptimizedImageUrl } from '@/lib/api'
+import { Star, Calendar, Clock, PlayCircle, Search } from 'lucide-react'
+import type { AnimeListItem } from '@/lib/anime-models'
+import { formatScore, formatDate, getOptimizedImageUrl } from '@/lib/anime-utils'
 import Link from 'next/link'
 import {
     Box,
@@ -15,10 +16,10 @@ import {
     Inset,
     Button,
     Separator
-} from '@radix-ui/themes'
+} from '@/components/ui-primitives'
 
 interface AnimeSearchCardProps {
-    anime: AnimeData
+    anime: AnimeListItem
     onClose?: () => void
     variant?: 'suggestion' | 'result'
     showImage?: boolean
@@ -30,26 +31,24 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
     variant = 'suggestion',
     showImage = true
 }) => {
-    const [isHovered, setIsHovered] = React.useState(false)
     const [imageLoaded, setImageLoaded] = React.useState(false)
     const [imageError, setImageError] = React.useState(false)
 
     const imageUrl = getOptimizedImageUrl(anime)
 
     return (
-        <Link href={`/anime/${anime.mal_id}`} style={{ textDecoration: 'none' }}>
+        <Link href={`/anime/${anime.mal_id}`} prefetch={false} style={{ textDecoration: 'none' }} onClick={onClose}>
             <Card
+                className="search-result-card"
                 style={{
                     position: 'relative',
                     backgroundColor: '#1e293b',
                     border: '1px solid #334155',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease',
+                    transition: 'border-color 0.15s ease, background-color 0.15s ease',
                     borderRadius: '8px',
                     overflow: 'hidden'
                 }}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
             >
                 <Flex gap="4" align="center">
                     {/* Anime Image */}
@@ -152,6 +151,11 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
                                     <Text size="1" style={{ color: '#cbd5e1' }}>
                                         {formatScore(anime.score)}
                                     </Text>
+                                    {anime.score_percentage !== undefined && (
+                                        <Text size="1" style={{ color: '#fbbf24' }}>
+                                            ({Math.round(anime.score_percentage)}%)
+                                        </Text>
+                                    )}
                                 </Flex>
                             )}
                             <Flex align="center" gap="1">
@@ -233,27 +237,27 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
                                     {demo.name}
                                 </Badge>
                             ))}
+                            {anime.tags?.filter(tag => {
+                                const category = tag.category || ''
+                                return !category.startsWith('theme') && !category.startsWith('demographic')
+                            }).slice(0, 2).map((tag) => (
+                                <Badge
+                                    key={`tag_${tag.mal_id}`}
+                                    size="1"
+                                    variant="soft"
+                                    title={tag.rank !== undefined ? `${Math.round(tag.rank)}% relevance` : 'AniList tag'}
+                                    style={{
+                                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                                        color: '#fcd34d',
+                                        fontSize: '10px'
+                                    }}
+                                >
+                                    {tag.name}{tag.rank !== undefined ? ` · ${Math.round(tag.rank)}%` : ''}
+                                </Badge>
+                            ))}
                         </Flex>
                     </Box>
 
-                    {/* Close button for suggestions */}
-                    {onClose && (
-                        <Button
-                            size="1"
-                            variant="ghost"
-                            onClick={(e) => {
-                                e.preventDefault()
-                                onClose()
-                            }}
-                            style={{
-                                color: '#94a3b8',
-                                padding: '4px',
-                                opacity: isHovered ? 1 : 0.7
-                            }}
-                        >
-                            <X size={14} />
-                        </Button>
-                    )}
                 </Flex>
             </Card>
         </Link>
@@ -261,7 +265,7 @@ const AnimeSearchCard: React.FC<AnimeSearchCardProps> = ({
 }
 
 interface AnimeSearchResultsProps {
-    results: AnimeData[]
+    results: AnimeListItem[]
     loading?: boolean
     error?: string | null
     query?: string

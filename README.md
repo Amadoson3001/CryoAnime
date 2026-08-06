@@ -1,6 +1,6 @@
 # CryoAnime
 
-CryoAnime is a sleek, high-performance anime discovery platform built on Next.js 15 and TypeScript. It provides a modern, glassmorphism-inspired UI for browsing, searching, and exploring anime using the Jikan API (MyAnimeList data), with careful attention to performance, responsiveness, and user experience.
+CryoAnime is a sleek, high-performance anime discovery platform built on Next.js 16 and TypeScript. It provides a modern, glassmorphism-inspired UI for browsing, searching, and exploring anime using the public AniList GraphQL API, with careful attention to performance, responsiveness, and user experience.
 
 This project is suitable as:
 
@@ -53,30 +53,31 @@ This project is suitable as:
   - Anime-by-genre exploration with sorting and pagination
   - Top-rated anime listing
   - Trending/seasonal anime listing by current season
-  - Movies view (via type-based filtering in API utilities)
+  - Movies view via the server-side AniList query boundary
   - Search with instant suggestions and full search results view
   - Weekly airing schedule with today-first ordering
 
 - Data and performance:
-  - Powered by the public Jikan REST API (MyAnimeList data)
-  - Centralized API client with:
-    - Request deduplication
-    - Smart in-memory and localStorage caching
-    - Rate limiting and retry logic
-    - NSFW-aware filtering
-    - Image URL optimization and preloading helpers
+  - Powered by the public AniList GraphQL API
+  - Server-only typed AniList client with:
+    - Cache Components and operation-specific freshness windows
+    - Genuine stale data during transient upstream failures
+    - An 8-second timeout and typed retryable errors
+    - Separate Mature and Explicit content filtering
+    - Image URL optimization and responsive `next/image` cards
 
 - User experience:
   - Dark, cool blue theme with subtle gradients and transparent surfaces
-  - Radix UI and Lucide icons for accessible, consistent components
+  - Local semantic layout primitives and the focused Radix Accordion primitive
   - Responsive layout optimized for desktop and mobile
   - Search suggestions dropdown with debounced queries
   - Animated skeletons, loaders, and transitions
   - Anime schedule and seasonal pages optimized to avoid rate limiting
 
 - Personalization and safety:
-  - NSFW preference toggle persisted via local storage
-  - Optional NSFW filtering applied at the API layer
+  - Mature/Explicit preferences persisted in a secure, same-site, HTTP-only 30-day cookie
+  - One-time migration from the legacy local-storage preference keys
+  - Content filtering applied at the API layer and on detail pages
   - Cookie consent component
   - Optimizations for low-end devices (“potato mode”) to reduce visual overhead
 
@@ -89,34 +90,34 @@ This project is suitable as:
 
 Core:
 
-- Next.js 15 (App Router)
+- Next.js 16 (App Router)
 - React 19
 - TypeScript
-- Radix UI Themes (`@radix-ui/themes`)
+- Local layout primitives in `components/ui-primitives.tsx`
 - Lucide React icons
-- Tailwind CSS v4 (with PostCSS and Autoprefixer)
-- Jikan API v4 (external anime data source)
+- AniList GraphQL API (external anime data source)
 
 Tooling:
 
 - ESLint with `eslint-config-next`
 - TypeScript strict tooling
-- Next.js Image Optimization (configured for `cdn.myanimelist.net`)
+- Next.js Image Optimization (configured for AniList CDN artwork)
 
 Key internal modules:
 
-- [`lib/api.ts`](lib/api.ts): Typed Jikan API client (caching, rate-limit handling, helpers)
-- [`lib/cache.ts`](lib/cache.ts): Local storage / in-memory caching helpers
-- [`lib/userPreferences.ts`](lib/userPreferences.ts): NSFW and preference utilities
+- [`lib/anilist.ts`](lib/anilist.ts): Server-only typed AniList boundary with Cache Components
+- [`lib/cache.ts`](lib/cache.ts): In-process compatibility cache (no browser response persistence)
+- [`lib/contentPreferences.ts`](lib/contentPreferences.ts): Secure preference-cookie serialization
+- [`lib/contentRatings.ts`](lib/contentRatings.ts): Content classification and local provider overrides
 - [`components/anime_cards.tsx`](components/anime_cards.tsx): Anime grid and cards
 - [`components/animesearchcard.tsx`](components/animesearchcard.tsx): Search result rendering
-- [`components/layout/header.tsx`](components/layout/header.tsx): Global navigation, search, NSFW toggle
+- [`components/layout/header.tsx`](components/layout/header.tsx): Global navigation, search, and content filters
 - [`components/layout/footer.tsx`](components/layout/footer.tsx): Global footer
 - [`components/hero.tsx`](components/hero.tsx): Landing hero
 - [`components/featured-section.tsx`](components/featured-section.tsx): Featured/landing content
 - [`components/live2d-waifu.tsx`](components/live2d-waifu.tsx), [`components/Live2dWaifuWrapper.tsx`](components/Live2dWaifuWrapper.tsx): Live2D integration
 - [`components/cookie-consent.tsx`](components/cookie-consent.tsx): Cookie consent banner
-- [`components/Pagination.tsx`](components/Pagination.tsx): Pagination component
+- [`components/PaginationLinks.tsx`](components/PaginationLinks.tsx): Server-rendered pagination links
 
 ## Project Structure (Overview)
 
@@ -128,7 +129,7 @@ Key internal modules:
   - `trending/`: Seasonal/trending anime list
   - `top-rated/`: Top-rated anime list
   - `seasonal/`: Season + year browser
-  - `movies/`: Movies listing (via API utilities)
+  - `movies/`: Movies listing
   - `Explore/`: Genre-based exploration
   - `search/`: Full search results page
   - `schedule/`: Weekly airing schedule
@@ -136,15 +137,15 @@ Key internal modules:
 - `components/`: UI components, layout, cards, search results, Live2D
 - `lib/`: API client, caching, utilities, user preferences
 - `public/`: Static assets (favicon, etc.)
-- Config: `next.config.js`, `tailwind.config.ts`, `tsconfig.json`, `.eslintrc.json`
+- Config: `next.config.js`, `tsconfig.json`, `eslint.config.mjs`
 
 ## Prerequisites
 
-- Node.js 18.18+ or 20+ (recommended for Next.js 15)
-- npm (default), pnpm, or yarn
-- Internet access (for Jikan API and external image host)
+- Node.js 20.9+ (required by Next.js 16)
+- npm (canonical package manager)
+- Internet access (for AniList GraphQL and external image host)
 
-No database is required; all data is fetched from the Jikan API.
+No database is required; all data is fetched from AniList.
 
 ## Installation
 
@@ -157,31 +158,29 @@ No database is required; all data is fetched from the Jikan API.
 
 2. Install dependencies:
 
-   ```bash
-   npm install
-   # or
-   pnpm install
-   # or
-   yarn install
-   ```
+```bash
+npm install
+```
 
 ## Configuration
 
 By default, CryoAnime uses:
 
-- Jikan API v4 at `https://api.jikan.moe/v4`
-- Remote images from `cdn.myanimelist.net` (configured in `next.config.js:images`)
+- AniList GraphQL API at `https://graphql.anilist.co`
+- Remote images from `s4.anilist.co` (configured in `next.config.js:images`)
 
 Optional environment variables (to be added by maintainers as needed):
 
-- `NEXT_PUBLIC_JIKAN_BASE_URL`  
-  Override the default Jikan endpoint (if you proxy or self-host).
+- `ANILIST_API_URL`
+  Override the server-side AniList endpoint when using an AniList-compatible
+  proxy or a self-hosted GraphQL gateway.
 - Any Live2D-related configuration keys (if your implementation requires them).
 
 If you introduce environment variables:
 
 - Document them in this section.
-- Ensure they are referenced via `process.env.NEXT_PUBLIC_...` where appropriate.
+- Keep server-only values out of `NEXT_PUBLIC_*` so browser code cannot bypass
+  the same-origin API boundary.
 
 ## Running the Development Server
 
@@ -189,10 +188,6 @@ Start the dev server:
 
 ```bash
 npm run dev
-# or
-pnpm dev
-# or
-yarn dev
 ```
 
 Then open:
@@ -219,14 +214,15 @@ Key routes:
   - Type at least 2 characters to trigger suggestions.
   - Press Enter or click the search icon to navigate to `/search?q=...`.
 
-- NSFW Content:
-  - Toggle via the shield icon in the header.
-  - Preference is stored in local storage.
-  - When disabled (default), NSFW titles are filtered out at the API layer.
+- Content filtering:
+  - Mature and Explicit controls are available independently in the header.
+  - Preferences are stored in a secure, same-site, HTTP-only functional cookie.
+  - Existing local-storage preference keys are migrated once and then removed.
+  - AniList's adult flag and mature tags map to the Mature bucket; Hentai labels map to Explicit (`Rx - Hentai`). Local overrides handle nuanced classifications.
 
 - Performance:
-  - API responses are cached in-memory and optionally in local storage to reduce calls.
-  - Requests are deduplicated, throttled, and retried on transient errors.
+  - Server responses use operation-specific Cache Components profiles and a bounded stale cache.
+  - Upstream requests are bounded by an 8-second timeout and return typed retryable errors.
   - Images are optimized via URL selection and `next/image` integration.
 
 - Live2D Waifu:
@@ -249,8 +245,10 @@ npm run start
 
 This runs a Next.js production server. For deployment:
 
-- Vercel (recommended): Import the repository and deploy directly.  
+- Vercel (recommended): Import the repository and deploy directly.
 - Custom hosting: Use `npm run build` and `npm run start` behind a reverse proxy.
+
+All anime data requests are fetched server-side through the typed AniList boundary; the browser only calls same-origin routes. The included GitHub Actions workflow validates tests, types, the production build, and browser smoke tests; deploy the successful build to your hosting platform of choice.
 
 Ensure:
 
@@ -259,20 +257,17 @@ Ensure:
 
 ## Running Tests
 
-This repository currently does not include an automated test suite configuration.
-
-Recommended next steps for maintainers:
-
-- Add unit tests for `lib/api.ts` (caching, rate limiting, NSFW filtering).
-- Add component tests for core UI (cards, search, schedule).
-- Add integration tests for key routes.
-
-Document test commands here once implemented, for example:
+Run the reliability suite:
 
 ```bash
-npm test
-# or
-npm run test:e2e
+npm test -- --run
+```
+
+The CI workflow also checks TypeScript and creates a complete production build:
+
+```bash
+npm run type-check
+npm run build
 ```
 
 ## Contribution Guidelines
@@ -286,7 +281,7 @@ Contributions are welcome. To keep the project clean and maintainable:
 - Follow the existing coding style:
   - TypeScript for all new logic
   - Prefer functional React components with hooks
-  - Keep API logic in `lib/api.ts` or related utilities
+  - Keep server API logic in `lib/anilist.ts` and keep client components on compact models.
 - Run before opening a PR:
   - `npm run lint`
   - `npm run build` (to ensure type and route correctness)

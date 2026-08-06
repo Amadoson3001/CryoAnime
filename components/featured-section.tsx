@@ -1,189 +1,70 @@
-'use client'
-import React, { useState, useEffect, memo } from 'react'
-import { AnimeGrid } from './anime_cards'
 import Link from 'next/link'
-import { useShouldSimplify } from '@/lib/usePerformance'
-
-import { fetchTopAnimeForLanding, fetchSeasonalAnimeForLanding, AnimeData, preloadAnimeImages, getCurrentSeasonInfo } from '@/lib/api'
-import { getNsfwPreference } from '@/lib/userPreferences'
 import { ChevronRight, Trophy, Calendar } from 'lucide-react'
-import {
-  Box,
-  Container,
-  Flex,
-  Text,
-  Button,
-  Separator
-} from '@radix-ui/themes'
+import { Container, Button } from '@/components/ui-primitives'
+import { AnimeGrid } from '@/components/anime_cards'
+import { getAnimeList, getCurrentSeasonInfo } from '@/lib/anilist'
+import { readContentPreferences } from '@/lib/contentPreferences'
 
-const FeaturedSection = () => {
-  const shouldSimplify = useShouldSimplify()
-  const [featuredAnime, setFeaturedAnime] = useState<AnimeData[]>([])
-  const [seasonalAnime, setSeasonalAnime] = useState<AnimeData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [featuredError, setFeaturedError] = useState<string | null>(null)
-  const [seasonalError, setSeasonalError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadFeaturedAnime = async () => {
-      try {
-        setLoading(true)
-        setFeaturedError(null)
-        setSeasonalError(null)
-
-        // Get current year and season
-        const { year, season } = getCurrentSeasonInfo()
-
-        // Get NSFW preference
-        const includeNsfw = getNsfwPreference()
-
-        // Fetch both top anime and seasonal anime in parallel using optimized functions
-        const [featuredResult, seasonalResult] = await Promise.allSettled([
-          fetchTopAnimeForLanding(includeNsfw),
-          fetchSeasonalAnimeForLanding(year, season, includeNsfw, 10)
-        ])
-
-        const featuredData = featuredResult.status === 'fulfilled' ? featuredResult.value : []
-        const seasonalData = seasonalResult.status === 'fulfilled' ? seasonalResult.value : []
-
-        setFeaturedAnime(featuredData)
-        setSeasonalAnime(seasonalData)
-        setFeaturedError(
-          featuredResult.status === 'rejected'
-            ? 'Failed to load top-rated anime. Please try again later.'
-            : null
-        )
-        setSeasonalError(
-          seasonalResult.status === 'rejected'
-            ? 'Failed to load seasonal anime. Please try again later.'
-            : null
-        )
-
-        // Preload images for better performance
-        if (!shouldSimplify && featuredData.length > 0) {
-          preloadAnimeImages([...featuredData, ...seasonalData], 6).catch(() => {
-            // Ignore preload errors - not critical for functionality
-          })
-        }
-      } catch {
-        setFeaturedError('Failed to load top-rated anime. Please try again later.')
-        setSeasonalError('Failed to load seasonal anime. Please try again later.')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadFeaturedAnime()
-  }, [shouldSimplify])
-
-
+/** Server-rendered landing sections keep AniList off the browser network path. */
+export default async function FeaturedSection() {
+  const preferences = await readContentPreferences()
+  const { year, season } = getCurrentSeasonInfo()
+  const [top, seasonal] = await Promise.allSettled([
+    getAnimeList({ page: 1, limit: 12, preferences, sort: 'score' }),
+    getAnimeList({ page: 1, limit: 12, preferences, season, seasonYear: year }),
+  ])
+  const topItems = top.status === 'fulfilled' ? top.value.items : []
+  const seasonalItems = seasonal.status === 'fulfilled' ? seasonal.value.items : []
 
   const sections = [
-    {
-      title: 'Top Rated Anime',
-      icon: <Trophy className="text-yellow-500" size={24} />,
-      data: featuredAnime,
-      loading: loading,
-      error: featuredError
-    },
-    {
-      title: 'Popular This Season',
-      icon: <Calendar className="text-blue-500" size={24} />,
-      data: seasonalAnime,
-      loading: loading,
-      error: seasonalError
-    }
+    { title: 'Top Rated Anime', eyebrow: 'Community favorites', icon: Trophy, data: topItems, error: top.status === 'rejected' ? 'Top-rated anime is temporarily unavailable.' : null, href: '/top-rated' },
+    { title: 'Popular This Season', eyebrow: 'Airing now', icon: Calendar, data: seasonalItems, error: seasonal.status === 'rejected' ? 'Seasonal anime is temporarily unavailable.' : null, href: '/trending' },
   ]
 
   return (
-    <Box
-      py={{ initial: '2', md: '4' }}
-      style={{
-        backgroundColor: '#0f172a'
-      }}
-    >
-      <Container size="4" px="2">
-        {sections.map((section, index) => (
-          <Box key={index} mb={{ initial: '2', md: '4' }}>
-            {/* Section Header with divider */}
-            <Flex align="center" justify="between" mb={{ initial: '5', md: '6' }}>
-              <Flex align="center" gap="3">
-                {section.icon}
-                <Text
-                  size={{ initial: '5', md: '6' }}
-                  weight="bold"
-                  style={{ color: 'white' }}
-                >
-                  {section.title}
-                </Text>
-              </Flex>
-              <Link
-                href={section.title === 'Top Rated Anime' ? '/top-rated' : '/trending'}
-                prefetch={false}
-                passHref
-              >
-                <Button variant="ghost" size="2" style={{ color: '#3b82f6' }}>
-                  <Flex align="center" gap="2">
-                    <Text size="2" weight="medium" style={{ color: '#cbd5e1' }}>View All</Text>
-                    <ChevronRight size={16} style={{ color: '#cbd5e1' }} />
-                  </Flex>
-                </Button>
-              </Link>
-            </Flex>
-
-            {/* Anime Grid */}
-            <AnimeGrid
-              animeList={section.data}
-              loading={section.loading}
-              error={section.error}
-            />
-
-            {/* Section divider */}
-            <Separator my={{ initial: '2', md: '4' }} size="4" style={{ backgroundColor: '#1e293b' }} />
-          </Box>
-        ))}
-
-        {/* Call to Action */}
-        <Box style={{ textAlign: 'center' }} py={{ initial: '1', md: '2' }}>
-          <Box
-            p={{ initial: '4', md: '6' }}
-            style={{
-              borderRadius: 'var(--radius-5)',
-              backgroundColor: 'rgba(59, 130, 246, 0.1)',
-              color: 'white',
-              border: '1px solid rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            <Text
-              as="p"
-              size={{ initial: '5', md: '6' }}
-              weight="bold"
-              mb="4"
-            >
-              Ready to explore more anime?
-            </Text>
-            <Text as="p" size="4" mb="6" style={{ color: '#cbd5e1' }}>
-              Join thousands of anime fans and discover your next favorite series.
-            </Text>
-            <Link href="/Explore" prefetch={false} passHref>
-              <Button
-                size="3"
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  fontWeight: 'bold'
-                }}
-              >
-                Browse All Anime
+    <section className="featured-sections" aria-label="Featured anime">
+      <Container size="4">
+        {sections.map((section, sectionIndex) => (
+          <section key={section.title} className="featured-section" aria-labelledby={`${section.title.toLowerCase().replace(/\s+/g, '-')}-heading`}>
+            <header className="section-heading-row">
+              <div className="section-heading-copy">
+                <span className="section-heading-icon" aria-hidden="true"><section.icon size={20} /></span>
+                <div>
+                  <p>{section.eyebrow}</p>
+                  <h2 id={`${section.title.toLowerCase().replace(/\s+/g, '-')}-heading`}>{section.title}</h2>
+                </div>
+              </div>
+              <Button asChild variant="ghost" size="2" className="section-view-all">
+                <Link href={section.href} prefetch={false}>
+                  <span>View all</span><ChevronRight size={16} aria-hidden="true" />
+                </Link>
               </Button>
-            </Link>
-          </Box>
-        </Box>
+            </header>
+            <AnimeGrid animeList={section.data} error={section.error} priorityCount={sectionIndex === 0 ? 2 : 0} />
+          </section>
+        ))}
+        <aside className="featured-cta">
+          <div><strong>Still deciding?</strong><p>Mix genres, themes, and tags to narrow the catalog around your mood.</p></div>
+          <Button asChild size="3" className="featured-cta-button"><Link href="/Explore" prefetch={false}>Open advanced explore</Link></Button>
+        </aside>
       </Container>
-
-    </Box>
+    </section>
   )
 }
 
-// Memoize the component to prevent unnecessary re-renders
-export default memo(FeaturedSection)
+/** Keeps the original landing-page skeleton visible while the cached server
+ * sections stream in, instead of leaving a blank gap below the hero. */
+export function FeaturedSectionFallback() {
+  return (
+    <section className="featured-sections" aria-label="Featured anime loading">
+      <Container size="4">
+        {["Top Rated Anime", "Popular This Season"].map(title => (
+          <section key={title} className="featured-section" aria-label={`${title} loading`}>
+            <header className="section-heading-row"><h2>{title}</h2></header>
+            <AnimeGrid animeList={[]} loading />
+          </section>
+        ))}
+      </Container>
+    </section>
+  )
+}

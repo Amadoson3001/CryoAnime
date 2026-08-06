@@ -1,149 +1,26 @@
-import React from 'react'
-import { PlayCircle } from 'lucide-react'
+import { Container } from '@/components/ui-primitives'
 
 export default function Loading() {
-    return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: '#0f172a',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-                flexDirection: 'column'
-            }}
-        >
-            {/* Animated background elements */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '15%',
-                        left: '10%',
-                        width: '50px',
-                        height: '50px',
-                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                        borderRadius: '50%',
-                        animation: 'float 3s ease-in-out infinite'
-                    }}
-                />
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '70%',
-                        right: '12%',
-                        width: '35px',
-                        height: '35px',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderRadius: '50%',
-                        animation: 'float 4s ease-in-out infinite reverse'
-                    }}
-                />
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: '25%',
-                        left: '25%',
-                        width: '25px',
-                        height: '25px',
-                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                        borderRadius: '50%',
-                        animation: 'float 2.5s ease-in-out infinite'
-                    }}
-                />
+  return (
+    <main className="page-shell detail-loading" aria-busy="true" aria-label="Loading anime details">
+      <Container size="4" px="4" py={{ initial: '7', md: '9' }}>
+        <div className="detail-loading-back" />
+        <div className="detail-loading-layout">
+          <div className="detail-loading-poster loading-shimmer" />
+          <div className="detail-loading-copy">
+            <div className="detail-loading-title loading-shimmer" />
+            <div className="detail-loading-line detail-loading-line-short loading-shimmer" />
+            <div className="detail-loading-pills">
+              <span className="loading-shimmer" /><span className="loading-shimmer" /><span className="loading-shimmer" />
             </div>
-
-            {/* Main loading content */}
-            <div
-                style={{
-                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-                    padding: '48px',
-                    borderRadius: '24px',
-                    border: '1px solid rgba(51, 65, 85, 0.5)',
-                    textAlign: 'center',
-                    backdropFilter: 'blur(10px)',
-                    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
-                    animation: 'slideInUp 0.8s ease-out',
-                    position: 'relative',
-                    zIndex: 1
-                }}
-            >
-                <div style={{ marginBottom: '24px' }}>
-                    <PlayCircle size={48} style={{ color: '#10b981', animation: 'bounce 1.5s ease-in-out infinite' }} />
-                </div>
-
-                <h2 style={{
-                    fontSize: '1.5rem',
-                    fontWeight: 'bold',
-                    color: 'white',
-                    marginBottom: '8px',
-                    animation: 'fadeIn 1s ease-out'
-                }}>
-                    Loading Anime Details
-                </h2>
-
-                <p style={{
-                    color: '#cbd5e1',
-                    fontSize: '0.875rem',
-                    animation: 'fadeIn 1s ease-out 0.2s both'
-                }}>
-                    Fetching detailed information and characters...
-                </p>
-
-                {/* Loading spinner */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    marginTop: '24px'
-                }}>
-                    <div style={{
-                        width: '40px',
-                        height: '40px',
-                        border: '3px solid rgba(51, 65, 85, 0.3)',
-                        borderTop: '3px solid #10b981',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                    }} />
-                </div>
-
-                {/* Pulsing dots */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    marginTop: '20px'
-                }}>
-                    <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#10b981',
-                        borderRadius: '50%',
-                        animation: 'pulse 1.4s ease-in-out infinite'
-                    }} />
-                    <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#10b981',
-                        borderRadius: '50%',
-                        animation: 'pulse 1.4s ease-in-out infinite 0.2s'
-                    }} />
-                    <div style={{
-                        width: '8px',
-                        height: '8px',
-                        backgroundColor: '#10b981',
-                        borderRadius: '50%',
-                        animation: 'pulse 1.4s ease-in-out infinite 0.4s'
-                    }} />
-                </div>
-            </div>
-
-            {/* Keyframes are defined in globals.css */}
+            <div className="detail-loading-rule" />
+            <div className="detail-loading-line loading-shimmer" />
+            <div className="detail-loading-line loading-shimmer" />
+            <div className="detail-loading-line detail-loading-line-medium loading-shimmer" />
+          </div>
         </div>
-    )
+        <span className="sr-only">Loading detailed information and characters…</span>
+      </Container>
+    </main>
+  )
 }

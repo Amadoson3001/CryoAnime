@@ -10,9 +10,9 @@ import {
   toggleWatchlist,
   LibraryItem
 } from '@/lib/library'
-import { AnimeData } from '@/lib/api'
+import type { AnimeListItem } from '@/lib/anime-models'
 
-export function useLibrary(anime?: AnimeData) {
+export function useLibrary(anime?: AnimeListItem) {
   const [favorites, setFavorites] = useState<LibraryItem[]>([])
   const [watchlist, setWatchlist] = useState<LibraryItem[]>([])
   const [favoriteStatus, setFavoriteStatus] = useState(false)
@@ -32,7 +32,11 @@ export function useLibrary(anime?: AnimeData) {
     
     // Listen for changes from other components
     window.addEventListener('library-change', refresh)
-    return () => window.removeEventListener('library-change', refresh)
+    window.addEventListener('storage', refresh)
+    return () => {
+      window.removeEventListener('library-change', refresh)
+      window.removeEventListener('storage', refresh)
+    }
   }, [refresh])
 
   const handleToggleFavorite = () => {

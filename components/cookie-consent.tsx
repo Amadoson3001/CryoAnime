@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Card, Button, Text, Flex, Box } from '@radix-ui/themes'
+import { Card, Button, Text, Flex, Box } from '@/components/ui-primitives'
 import { Cookie, X, Settings } from 'lucide-react'
-import { setNsfwPreference } from '@/lib/userPreferences'
+import { DEFAULT_CONTENT_PREFERENCES } from '@/lib/contentRatings'
+import { useContentPreferences } from '@/components/content-preference-provider'
 
 interface CookieConsentProps {
     onAccept?: () => void
@@ -13,39 +14,47 @@ interface CookieConsentProps {
 const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => {
     const [show, setShow] = useState(false)
     const [showDetails, setShowDetails] = useState(false)
+    const { setPreferences } = useContentPreferences()
 
     useEffect(() => {
         // Check if user has already made a choice
-        const consentGiven = localStorage.getItem('cookie_consent_given')
+        let consentGiven: string | null = null
+        try {
+            consentGiven = localStorage.getItem('cookie_consent_given')
+        } catch {
+            // Show the prompt when storage is unavailable so the user can still
+            // make a choice for this session.
+        }
         if (!consentGiven) {
             setShow(true)
         }
     }, [])
 
+    const persistConsent = (choice: string) => {
+        try {
+            localStorage.setItem('cookie_consent_given', 'true')
+            localStorage.setItem('cookie_consent_choice', choice)
+        } catch {
+            // Consent is still applied for the current render when storage is blocked.
+        }
+    }
+
     const handleAccept = () => {
-        localStorage.setItem('cookie_consent_given', 'true')
-        localStorage.setItem('cookie_consent_choice', 'accepted')
+        persistConsent('accepted')
         setShow(false)
         onAccept?.()
     }
 
     const handleReject = () => {
-        localStorage.setItem('cookie_consent_given', 'true')
-        localStorage.setItem('cookie_consent_choice', 'rejected')
-        // Clear any existing NSFW preference
-        localStorage.removeItem('nsfw_enabled')
-        // Remove cookie if it exists
-        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; Secure; SameSite=Lax'
+        persistConsent('rejected')
+        setPreferences(DEFAULT_CONTENT_PREFERENCES)
         setShow(false)
         onReject?.()
     }
 
     const handleAcceptNecessary = () => {
-        localStorage.setItem('cookie_consent_given', 'true')
-        localStorage.setItem('cookie_consent_choice', 'necessary_only')
-        // Clear any existing NSFW preference since it's not necessary
-        localStorage.removeItem('nsfw_enabled')
-        document.cookie = 'nsfw_enabled=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; Secure; SameSite=Lax'
+        persistConsent('necessary_only')
+        setPreferences(DEFAULT_CONTENT_PREFERENCES)
         setShow(false)
     }
 
@@ -82,8 +91,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
                             variant="ghost"
                             size="2"
                             onClick={() => {
-                                localStorage.setItem('cookie_consent_given', 'true')
-                                localStorage.setItem('cookie_consent_choice', 'dismissed')
+                                persistConsent('dismissed')
                                 setShow(false)
                             }}
                             style={{
@@ -99,7 +107,7 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
                     {/* Content */}
                     <Box>
                         <Text size="3" style={{ color: '#cbd5e1', lineHeight: '1.6', marginBottom: '1rem' }}>
-                            We use cookies to remember your NSFW content preference. This helps us show you appropriate content
+                            We use cookies to remember your Mature and Explicit content preferences. This helps us show you appropriate content
                             based on your choice. No personal data is collected or shared.
                         </Text>
 
@@ -114,13 +122,13 @@ const CookieConsent: React.FC<CookieConsentProps> = ({ onAccept, onReject }) => 
                                 }}
                             >
                                 <Text size="3" weight="bold" style={{ color: '#60a5fa', marginBottom: '0.5rem' }}>
-                                    NSFW Preference Cookie Details:
+                                    Content Preference Cookie Details:
                                 </Text>
                                 <Text size="2" style={{ color: '#94a3b8', lineHeight: '1.5' }}>
-                                    • <strong>Purpose:</strong> Remembers if you want to view NSFW content<br />
+                                    • <strong>Purpose:</strong> Remembers whether Mature or Explicit content is visible<br />
                                     • <strong>Duration:</strong> 30 days<br />
-                                    • <strong>Storage:</strong> Browser cookie and localStorage<br />
-                                    • <strong>Data:</strong> Simple true/false preference only
+                                    • <strong>Storage:</strong> Secure functional cookie; consent choice stays local-only<br />
+                                    • <strong>Data:</strong> Two simple true/false preferences only
                                 </Text>
                             </Box>
                         )}

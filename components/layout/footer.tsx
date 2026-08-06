@@ -1,5 +1,3 @@
-'use client'
-import React from 'react'
 import Link from 'next/link'
 import { Heart, Github, ExternalLink } from 'lucide-react'
 import {
@@ -9,11 +7,9 @@ import {
   Grid,
   Text,
   Separator
-} from '@radix-ui/themes'
+} from '@/components/ui-primitives'
 
 const Footer = () => {
-  const currentYear = new Date().getUTCFullYear()
-
   const footerLinks = {
     explore: [
       { name: 'Top Anime', href: '/top-rated' },
@@ -101,22 +97,13 @@ const Footer = () => {
                 <Link
                   key={link.name}
                   href={link.href}
+                  className="footer-link"
                   style={{
                     color: link.href === '#' ? '#64748b' : '#cbd5e1',
                     fontSize: 'var(--font-size-3)',
                     textDecoration: 'none',
                     transition: 'color 0.2s ease',
                     pointerEvents: link.href === '#' ? 'none' : 'auto'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#3b82f6'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#cbd5e1'
-                    }
                   }}
                 >
                   {link.name}
@@ -155,22 +142,13 @@ const Footer = () => {
                 <Link
                   key={link.name}
                   href={link.href}
+                  className="footer-link"
                   style={{
                     color: link.href === '#' ? '#64748b' : '#cbd5e1',
                     fontSize: 'var(--font-size-3)',
                     textDecoration: 'none',
                     transition: 'color 0.2s ease',
                     pointerEvents: link.href === '#' ? 'none' : 'auto'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#3b82f6'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#cbd5e1'
-                    }
                   }}
                 >
                   {link.name}
@@ -209,22 +187,13 @@ const Footer = () => {
                 <Link
                   key={link.name}
                   href={link.href}
+                  className="footer-link"
                   style={{
                     color: link.href === '#' ? '#64748b' : '#cbd5e1',
                     fontSize: 'var(--font-size-3)',
                     textDecoration: 'none',
                     transition: 'color 0.2s ease',
                     pointerEvents: link.href === '#' ? 'none' : 'auto'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#3b82f6'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (link.href !== '#') {
-                      e.currentTarget.style.color = '#cbd5e1'
-                    }
                   }}
                 >
                   {link.name}
@@ -247,7 +216,7 @@ const Footer = () => {
           style={{ width: '100%' }}
         >
           <Text as="p" size="3" mb={{ initial: '2', md: '0' }} style={{ color: '#94a3b8' }}>
-            © {currentYear} CryoAnime. All rights reserved.
+            © CryoAnime. All rights reserved.
           </Text>
           <Text
             as="p"
@@ -266,7 +235,8 @@ const Footer = () => {
           <Flex align="center" gap="5" style={{ color: '#94a3b8' }}>
             <Text size="3">Powered by</Text>
             <a
-              href="https://jikan.moe/"
+              className="footer-provider-link"
+              href="https://anilist.co/"
               target="_blank"
               rel="noopener noreferrer"
               style={{
@@ -277,14 +247,8 @@ const Footer = () => {
                 textDecoration: 'none',
                 transition: 'color 0.2s ease'
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#60a5fa'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#3b82f6'
-              }}
             >
-              <Text size="3">Jikan API</Text>
+              <Text size="3">AniList API</Text>
               <ExternalLink size={16} />
             </a>
           </Flex>

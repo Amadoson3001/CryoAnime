@@ -1,25 +1,20 @@
 'use client'
 
-import React, { useState } from 'react'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
+import { useState } from 'react'
+import Link from 'next/link'
 import {
   Container,
   Flex,
   Box,
   Text,
   Card,
-  Separator
-} from '@radix-ui/themes'
+  Button,
+} from '@/components/ui-primitives'
 import { ChevronDown, HelpCircle } from 'lucide-react'
 import * as Accordion from '@radix-ui/react-accordion'
 
 const FAQPage = () => {
   const [openItem, setOpenItem] = useState<string | null>(null)
-
-  const toggleItem = (value: string) => {
-    setOpenItem(openItem === value ? null : value)
-  }
 
   const faqData = [
     {
@@ -32,23 +27,23 @@ const FAQPage = () => {
     },
     {
       question: "How often is the anime data updated?",
-      answer: "Our anime data comes from the Jikan API (MyAnimeList), which is updated regularly. We cache data locally to improve performance, and the cache refreshes automatically."
+      answer: "Our anime data comes from AniList, which is updated regularly. The server cache improves response times and refreshes automatically."
     },
     {
       question: "Can I save my favorite anime?",
       answer: "Yes! You can add anime to your Favorites or Watchlist. These are stored locally in your browser, so they persist across sessions without requiring an account."
     },
     {
-      question: "How does the NSFW content filter work?",
-      answer: "CryoAnime includes an NSFW toggle in the header. When disabled, anime with mature content ratings (Hentai, Ecchi) are filtered out of all listings. Your preference is saved locally."
+      question: "How do the content filters work?",
+      answer: "CryoAnime has separate Mature and Explicit content controls. Mature covers AniList adult flags, nudity, mild nudity, and ecchi; Explicit covers Hentai titles. Both are hidden by default and your choices are saved in a secure preference cookie."
     },
     {
       question: "Where does the anime data come from?",
-      answer: "All anime information is fetched from the Jikan API, which is a free, open-source API for MyAnimeList data. We do not host or store any anime content ourselves."
+      answer: "All anime information is fetched from AniList's public API. We do not host or store any anime content ourselves."
     },
     {
       question: "How can I report incorrect information?",
-      answer: "Since our data comes from MyAnimeList via the Jikan API, incorrect information should be reported directly to MyAnimeList. Our data reflects their database."
+      answer: "Since our data comes from AniList, incorrect information should be reported directly to AniList. Our data reflects their database."
     },
     {
       question: "Can I contribute to the platform?",
@@ -58,7 +53,6 @@ const FAQPage = () => {
 
   return (
     <>
-      <Header />
       <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
         {/* Hero Section */}
         <Box
@@ -209,34 +203,13 @@ const FAQPage = () => {
               If you can&apos;t find the answer you&apos;re looking for, please reach out to our support team.
             </Text>
             <Flex gap="4" justify="center" wrap="wrap">
-              <button
-                style={{
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  padding: '0.75rem 2rem',
-                  borderRadius: '8px',
-                  fontWeight: '600',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(59, 130, 246, 0.4)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-                onClick={() => window.location.href = '/about'}
-              >
-                Contact Support
-              </button>
+              <Button asChild size="3" style={{ backgroundColor: '#3b82f6', color: 'white' }}>
+                <Link href="/about">Contact Support</Link>
+              </Button>
             </Flex>
           </Card>
         </Container>
       </main>
-      <Footer />
     </>
   )
 }

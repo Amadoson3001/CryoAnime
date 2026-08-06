@@ -1,31 +1,53 @@
 'use client'
 
-import React from 'react'
-import { Flex, Button, Tooltip } from '@radix-ui/themes'
+import { useState } from 'react'
+import { Flex, Button } from '@/components/ui-primitives'
 import { Heart, Share2, Plus, Check } from 'lucide-react'
-import { AnimeData } from '@/lib/api'
+import type { AnimeListItem } from '@/lib/anime-models'
 import { useLibrary } from '@/hooks/useLibrary'
 
 interface AnimeActionButtonsProps {
-  anime: AnimeData
+  anime: AnimeListItem
 }
 
 export default function AnimeActionButtons({ anime }: AnimeActionButtonsProps) {
   const { isFavorite, isInWatchlist, toggleFavorite, toggleWatchlist } = useLibrary(anime)
+  const [shareStatus, setShareStatus] = useState<string | null>(null)
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+    if (!shareUrl) return
     if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({
-        title: anime.title_english || anime.title,
-        text: `Check out ${anime.title_english || anime.title} on CryoAnime!`,
-        url: window.location.href
-      }).catch(() => {
-        // Fallback or ignore error
-      })
-    } else {
-      // Fallback: Copy to clipboard
-      navigator.clipboard.writeText(window.location.href)
-      alert('Link copied to clipboard!')
+      try {
+        await navigator.share({
+          title: anime.title_english || anime.title,
+          text: `Check out ${anime.title_english || anime.title} on CryoAnime!`,
+          url: shareUrl,
+        })
+        return
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return
+      }
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = shareUrl
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        const copied = document.execCommand('copy')
+        textarea.remove()
+        if (!copied) throw new Error('Clipboard is unavailable.')
+      }
+      setShareStatus('Link copied to clipboard.')
+    } catch {
+      setShareStatus('Could not copy the link. Copy it from the browser address bar instead.')
     }
   }
 
@@ -37,7 +59,7 @@ export default function AnimeActionButtons({ anime }: AnimeActionButtonsProps) {
             flex: 1, 
             backgroundColor: isFavorite ? '#ef4444' : '#1e293b', 
             color: 'white',
-            transition: 'all 0.2s ease'
+            transition: 'background-color 0.2s ease, transform 0.2s ease'
           }}
           onClick={toggleFavorite}
         >
@@ -51,12 +73,12 @@ export default function AnimeActionButtons({ anime }: AnimeActionButtonsProps) {
             flex: 1,
             backgroundColor: isInWatchlist ? '#10b981' : '#1e293b', 
             color: 'white',
-            transition: 'all 0.2s ease'
+            transition: 'background-color 0.2s ease, transform 0.2s ease'
           }}
           onClick={toggleWatchlist}
         >
           {isInWatchlist ? <Check size={16} /> : <Plus size={16} />}
-          {isInWatchlist ? 'Waitlisted' : 'Watchlist'}
+          {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
         </Button>
       </Flex>
       
@@ -73,6 +95,7 @@ export default function AnimeActionButtons({ anime }: AnimeActionButtonsProps) {
         <Share2 size={16} />
         Share Anime
       </Button>
+      {shareStatus && <p className="share-status" role="status">{shareStatus}</p>}
     </Flex>
   )
 }

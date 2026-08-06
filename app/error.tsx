@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Box, Container, Text, Button, Flex } from '@radix-ui/themes'
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import Link from 'next/link'
+import { Box, Container, Text, Button, Flex } from '@/components/ui-primitives'
+import { AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react'
 
 export default function Error({
   error,
@@ -47,13 +48,11 @@ export default function Error({
                 <RefreshCw size={16} />
                 Try Again
               </Button>
-              <Button
-                variant="soft"
-                onClick={() => window.location.href = '/'}
-                style={{ backgroundColor: '#1e293b', color: '#cbd5e1', cursor: 'pointer' }}
-              >
-                <Home size={16} />
-                Go Home
+              <Button variant="soft" asChild>
+                <Link href="/">
+                  <ArrowLeft size={16} />
+                  Back to Home
+                </Link>
               </Button>
             </Flex>
           </Box>

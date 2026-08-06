@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Box, Flex, Text, Grid, Button } from '@radix-ui/themes'
+import { Box, Flex, Text, Grid, Button } from '@/components/ui-primitives'
 import { Users, ChevronDown, ChevronUp } from 'lucide-react'
 import CharacterCard from './CharacterCard'
-import { CharacterWithRole } from '@/lib/api'
+import type { CharacterWithRole } from '@/lib/anime-models'
 
 interface CharacterGridProps {
   mainCharacters: CharacterWithRole[]

@@ -1,198 +1,24 @@
-'use client'
-import React, { useState, useEffect, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
-import { AnimeGrid } from '@/components/anime_cards'
-import { AnimeSearchResults } from '@/components/animesearchcard'
-import { searchAnime, AnimeData } from '@/lib/api'
-import { getNsfwPreference } from '@/lib/userPreferences'
-import { Search, Filter } from 'lucide-react'
-import {
-  Container,
-  Flex,
-  Box,
-  TextField,
-  Button,
-  Text
-} from '@radix-ui/themes'
+import { Search } from 'lucide-react'
+import { Suspense } from 'react'
+import { Container } from '@/components/ui-primitives'
+import SearchResultsClient from '@/components/search-results-client'
 
-// Component that uses useSearchParams - needs to be wrapped in Suspense
-const SearchContent = () => {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const initialQuery = searchParams.get('q') || ''
-
-  const [query, setQuery] = useState(initialQuery)
-  const [searchResults, setSearchResults] = useState<AnimeData[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [hasNextPage, setHasNextPage] = useState(false)
-
-  useEffect(() => {
-    if (initialQuery) {
-      setQuery(initialQuery)
-      performSearch(initialQuery, 1)
-    }
-  }, [initialQuery])
-
-  const performSearch = async (searchQuery: string, page: number = 1) => {
-    if (!searchQuery.trim()) {
-      setSearchResults([])
-      setError(null)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-      const includeNsfw = getNsfwPreference()
-      const response = await searchAnime(searchQuery, page, 24, includeNsfw)
-      setSearchResults(response.data)
-      setHasNextPage(response.pagination.has_next_page)
-      setCurrentPage(page)
-    } catch (err) {
-      setError('Failed to search anime. Please try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (query.trim()) {
-      // Update URL with search query
-      const newUrl = `/search?q=${encodeURIComponent(query)}`
-      router.push(newUrl)
-      performSearch(query)
-    }
-  }
-
-  const loadMore = () => {
-    performSearch(query, currentPage + 1)
-  }
-
+export default function SearchPage() {
   return (
-    <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-      <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
-        {/* Search Header */}
-        <Box mb="8">
-          <Text as="p" size="8" weight="bold" mb="6" style={{ color: 'white' }}>
-            Search Results
-          </Text>
-
-          {/* Search Form */}
-          <form onSubmit={handleSearch}>
-            <Flex gap="4" mb="6">
-              <Box flexGrow="1">
-                <TextField.Root
-                  placeholder="Search for anime..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch(e as any)
-                    }
-                  }}
-                  style={{ width: '100%' }}
-                >
-                  <TextField.Slot
-                    side="left"
-                    style={{ cursor: 'pointer' }}
-                    onClick={handleSearch}
-                  >
-                    <Search size={20} style={{ color: '#94a3b8' }} />
-                  </TextField.Slot>
-                </TextField.Root>
-              </Box>
-              <Button type="submit" style={{ backgroundColor: '#3b82f6', color: 'white' }}>
-                <Search size={20} />
-                Search
-              </Button>
-            </Flex>
+    <main className="page-shell">
+      <Container size="4" px="3" py={{ initial: '7', md: '9' }} className="page-enter">
+        <div className="page-heading">
+          <h1 className="page-title">Search Anime</h1>
+          <form action="/search" method="get" role="search" className="page-search-form">
+            <label htmlFor="anime-search-query" className="sr-only">Search anime</label>
+            <input id="anime-search-query" name="q" type="search" minLength={2} maxLength={100} required placeholder="Search for anime…" autoComplete="off" />
+            <button type="submit"><Search size={18} aria-hidden="true" /> Search</button>
           </form>
-
-          {/* Search Stats */}
-          {query && !loading && !error && (
-            <Text as="p" size="2" style={{ color: '#cbd5e1' }}>
-              Found {searchResults.length} results for &quot;<span>{query}</span>&quot;
-            </Text>
-          )}
-        </Box>
-
-        {/* Search Results */}
-        {searchResults.length > 0 ? (
-          <AnimeSearchResults
-            results={searchResults}
-            loading={loading}
-            error={error}
-            query={query}
-            variant="page"
-            maxResults={24}
-          />
-        ) : (
-          <AnimeGrid
-            animeList={searchResults}
-            loading={loading}
-            error={error}
-          />
-        )}
-
-        {/* Load More Button */}
-        {hasNextPage && !loading && searchResults.length > 0 && (
-          <Box style={{ textAlign: 'center' }} mt="8">
-            <Button onClick={loadMore} variant="soft" style={{ backgroundColor: '#1e293b', color: 'white' }}>
-              Load More Results
-            </Button>
-          </Box>
-        )}
-
-        {/* No Results State */}
-        {!loading && !error && query && searchResults.length === 0 && (
-          <Box style={{ textAlign: 'center' }} py="12">
-            <Box maxWidth="400px" mx="auto" p="8" style={{ borderRadius: 'var(--radius-3)', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
-              <Search style={{ margin: '0 auto 16px', color: '#94a3b8' }} size={48} />
-              <Text as="p" size="5" weight="bold" mb="2" style={{ color: 'white' }}>
-                No results found
-              </Text>
-              <Text as="p" size="2" style={{ color: '#cbd5e1' }}>
-                Try adjusting your search terms or browse our featured anime.
-              </Text>
-            </Box>
-          </Box>
-        )}
+        </div>
+        <Suspense fallback={<div className="empty-state">Preparing search…</div>}>
+          <SearchResultsClient />
+        </Suspense>
       </Container>
     </main>
   )
 }
-
-// Loading fallback component
-const SearchLoadingFallback = () => (
-  <main style={{ backgroundColor: '#0f172a', minHeight: '100vh' }}>
-    <Container size="4" px="4" py="8">
-      <Box mb="8">
-        <Text as="p" size="8" weight="bold" mb="6" style={{ color: 'white' }}>
-          Search Results
-        </Text>
-        <Text as="p" size="4" style={{ color: '#cbd5e1' }}>
-          Loading search...
-        </Text>
-      </Box>
-    </Container>
-  </main>
-)
-
-const SearchPage = () => {
-  return (
-    <>
-      <Header />
-      <Suspense fallback={<SearchLoadingFallback />}>
-        <SearchContent />
-      </Suspense>
-      <Footer />
-    </>
-  )
-}
-
-export default SearchPage

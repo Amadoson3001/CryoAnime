@@ -3,37 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "node node_modules/next/dist/bin/next build",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@radix-ui/react-accordion": "^1.2.12",
-    "@radix-ui/themes": "^3.3.0",
-    "autoprefixer": "10.4.21",
-    "eslint": "9.31.0",
-    "eslint-config-next": "15.4.3",
+    "@radix-ui/react-accordion": "^1.2.20",
+    "@radix-ui/react-select": "^2.3.7",
     "lucide-react": "^0.526.0",
-    "next": "^15.5.18",
-    "postcss": "8.5.6",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "tailwindcss": "4.1.11",
+    "next": "16.2.12",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "typescript": "5.8.3"
   },
+  "overrides": {
+    "sharp": "0.35.0",
+    "vite": "8.0.16"
+  },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.0",
+    "@playwright/test": "^1.62.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.12.4",
-    "@types/react": "19.1.8",
-    "@types/react-dom": "19.1.6",
-    "@vitejs/plugin-react": "^6.0.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^6.0.5",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.2.12",
     "jsdom": "^29.1.1",
-    "vitest": "^4.1.7"
+    "vitest": "^4.1.10"
   }
 }

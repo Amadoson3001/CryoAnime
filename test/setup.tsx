@@ -1,6 +1,26 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
+// Node 25 exposes an incomplete global `localStorage` object when Vitest is
+// launched without `--localstorage-file`. Prefer a small deterministic shim
+// so browser components can exercise their normal preference/cache paths.
+if (typeof globalThis.localStorage?.getItem !== 'function') {
+  const values = new Map<string, string>()
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      get length() {
+        return values.size
+      },
+      clear: () => values.clear(),
+      getItem: (key: string) => values.get(key) ?? null,
+      key: (index: number) => [...values.keys()][index] ?? null,
+      removeItem: (key: string) => values.delete(key),
+      setItem: (key: string, value: string) => values.set(key, value),
+    },
+  })
+}
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -21,17 +41,8 @@ vi.mock('next/navigation', () => ({
 // Mock next/image
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: (props: any) => {
+  default: ({ alt = '', ...props }: any) => {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img {...props} />
+    return <img alt={alt} {...props} />
   },
-}))
-
-// Mock Radix UI scroll area (it can be problematic in JSDOM)
-vi.mock('@radix-ui/react-scroll-area', () => ({
-  Root: ({ children }: any) => <div>{children}</div>,
-  Viewport: ({ children }: any) => <div>{children}</div>,
-  Scrollbar: () => null,
-  Thumb: () => null,
-  Corner: () => null,
 }))

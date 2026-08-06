@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Box, Badge, Flex, Text } from '@radix-ui/themes';
+import { Box, Badge, Flex, Text } from '@/components/ui-primitives';
 import { Heart, Mic, ChevronDown, ChevronUp } from 'lucide-react';
-import { CharacterData, VoiceActorData } from '@/lib/api';
+import type { CharacterData, VoiceActorData } from '@/lib/anime-models';
 
 interface CharacterWithRole {
   character: CharacterData;
@@ -43,19 +43,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
   return (
     <Box
       key={charData.mal_id}
+      className="character-card"
       style={{
         position: 'relative',
         borderRadius: 'var(--radius-3)',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        transform: 'scale(1)',
-        transition: 'transform 0.3s ease'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.05)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
+        overflow: 'hidden'
       }}
     >
       {/* Character Image */}
@@ -74,10 +66,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
           src={
             charData.images?.webp?.image_url ||
             charData.images?.jpg?.image_url ||
-            '/placeholder-character.jpg'
+            '/placeholder-anime.svg'
           }
           alt={charData.name || 'Character'}
           fill
+          sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
           style={{
             objectFit: 'cover'
           }}
@@ -135,7 +128,11 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
 
           {/* Voice Actor Toggle */}
           {japaneseVA.length > 0 && (
-            <div
+            <button
+              type="button"
+              className="character-va-toggle"
+              aria-expanded={showVoiceActors}
+              aria-controls={`character-${charData.mal_id}-voice-actors`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -144,7 +141,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
                 padding: '0.25rem 0',
                 marginTop: '0.25rem'
               }}
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 setShowVoiceActors(!showVoiceActors);
               }}
@@ -154,7 +151,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
                 {japaneseVA.length} VA{japaneseVA.length > 1 ? 's' : ''}
               </span>
               {showVoiceActors ? <ChevronUp size={10} style={{ color: '#a855f7' }} /> : <ChevronDown size={10} style={{ color: '#a855f7' }} />}
-            </div>
+            </button>
           )}
 
           <Flex justify="center" mt="2">
@@ -185,6 +182,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
       {/* Voice Actors Expandable Section */}
       {showVoiceActors && japaneseVA.length > 0 && (
         <Box
+          id={`character-${charData.mal_id}-voice-actors`}
           style={{
             backgroundColor: '#1e293b',
             borderRadius: 'var(--radius-3)',
@@ -213,6 +211,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character }) => {
                       src={va.person.images.jpg.image_url}
                       alt={va.person.name}
                       fill
+                      sizes="24px"
                       style={{ objectFit: 'cover' }}
                     />
                   ) : (

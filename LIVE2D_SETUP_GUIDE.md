@@ -4,6 +4,8 @@
 
 I've created a new, improved Live2D waifu component that replaces the old one. This component is more robust, configurable, and includes better error handling.
 
+In the current app, the canonical implementation is `components/live2d-waifu.tsx` and it is mounted globally through `components/Live2dWaifuWrapper.tsx`. For callers that use the shorter feature name, `components/waifu2d.tsx` is a compatibility entry point that re-exports the same component. After the CDN model boots, the widget applies the local `/waifu-tips.json` copy for welcome, idle, hover, and click messages while keeping model assets on the pinned external model CDN.
+
 ## How to Use the Component
 
 ### Basic Usage

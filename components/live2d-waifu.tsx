@@ -1,299 +1,351 @@
-'use client';
+'use client'
 
-import { useEffect, useRef, useState, useMemo, memo } from 'react';
+import { useEffect } from 'react'
 
-interface Live2DSettings {
-    model: {
-        jsonPath: string;
-        scale?: number;
-        position?: 'left' | 'right';
-        width?: number;
-        height?: number;
-        hOffset?: number;
-        vOffset?: number;
-    };
-    display?: {
-        position?: 'left' | 'right';
-        width?: number;
-        height?: number;
-        hOffset?: number;
-        vOffset?: number;
-    };
-    mobile?: { show?: boolean; scale?: number };
-    react?: { opacityDefault?: number; opacityOnHover?: number };
-    tips?: {
-        welcomeTips?: { text?: string; duration?: number };
-        copyTips?: { text?: string; duration?: number };
-        clickTips?: string[];
-        idleTips?: { text?: string[]; duration?: number };
-    };
-    showToolMenu?: boolean;
-    showHitAreaFrames?: boolean;
-}
+const WIDGET_BASE = 'https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.1/dist/'
+const WIDGET_SCRIPT = `${WIDGET_BASE}autoload.js`
+const SCRIPT_INTEGRITY = 'sha384-pBbB6dM+Vbtn6ljvsU4bexD0GpPCX9JrSZjNJ65mZpmo1bpwDFudnRKSRsjSyXM2'
+const WIDGET_SELECTORS = ['#waifu', '#waifu-toggle', '#live2d'] as const
+const WIDGET_WAIT_MS = 5_000
+const FALLBACK_WAIT_MS = 8_000
 
-interface Live2dWaifuProps {
-    settings?: Partial<Live2DSettings>;
-    onLoad?: () => void;
-    onError?: (error: Error) => void;
+const WIDGET_CONFIG = {
+  // Keep the copy in this repository while the model files stay on the
+  // upstream model CDN. The widget requires a model_list.json when models
+  // are not embedded in the tips file.
+  waifuPath: '/waifu-tips.json',
+  cdnPath: 'https://fastly.jsdelivr.net/gh/fghrsh/live2d_api/',
+  modelId: 0,
+  tools: ['hitokoto', 'switch-model', 'switch-texture', 'photo', 'info', 'quit'],
+  drag: false,
+  showToggleAfterQuit: true,
+  logLevel: 'error',
+} as const
+
+type WidgetConfig = Record<string, unknown>
+
+type TalkingTips = {
+  message?: {
+    default?: string[]
+    welcome?: string
+    hoverBody?: string | string[]
+    tapBody?: string | string[]
+    visibilitychange?: string
+  }
+  mouseover?: Array<{ selector: string; text: string | string[] }>
+  click?: Array<{ selector: string; text: string | string[] }>
 }
 
 declare global {
-    interface Window {
-        L2Dwidget?: any;
-        live2d?: any;
-        live2d_settings?: any;
-    }
+  interface Window {
+    initWidget?: (config: WidgetConfig) => void
+  }
 }
 
-const Live2dWaifu: React.FC<Live2dWaifuProps> = ({
-    settings = {},
-    onLoad,
-    onError
-}) => {
-    const [isLoaded, setIsLoaded] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
-    const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const quotes = useMemo(() => [
-        "Welcome to CryoAnime, Senpai! I'm here to help you discover the absolute best anime using the magical Jikan API! ❄️✨",
-        "Did you know? You can see when your favorite shows air live on our 'Schedule' page! No more missed episodes! 🗓️",
-        "Feeling a bit laggy? Turn on 'Potato Mode' in the settings! It makes things super speedy, just like me! 🥔💨",
-        "Looking for family-friendly browsing? Toggle the Shield Icon in the header! Safety first! 🛡️",
-        "CryoAnime is beautifully designed with glassmorphism and Tailwind by Mtechsin! Truly a work of art, right? (＾▽＾)",
-        "Search suggestions will pop up as soon as you type 2 characters in the search bar! Try searching for your favorite! 🔍",
-        "Hey! Don't just click on me, go watch some anime! Or... do you like poking me more? (⁄ ⁄•⁄-⁄•⁄ ⁄)",
-        "Are you watching anime without me? That's a crime, Senpai! Baka! ＞︿＜",
-        "My favorite anime? Obviously the one where the main character is incredibly handsome... just like you, Senpai! (✿◡‿◡)",
-        "If you search for 'Waifu', will I show up first? You should try it in the search bar! *wink wink* 😉",
-        "My smart caching makes me faster than my CPU processing your good looks! 💻❤️",
-        "Don't sit too long staring at the screen! Stand up, stretch, and get some water. I want my Senpai healthy! ( •̀_•́ )"
-    ], []);
+let scriptPromise: Promise<void> | undefined
+let fallbackInitializationStarted = false
+let customTalkingPromise: Promise<void> | undefined
+let customTalkingStarted = false
 
-    const clickQuotes = useMemo(() => [
-        "Kyaaa! That tickles, Senpai! (*/ω＼*)",
-        "Please don't poke me there... unless you're buying me snacks! 🍩",
-        "Hey! Keep your cursor behaved, or I'll recommend you a 100-episode tear-jerker! ＞﹏＜",
-        "Ouch! If you keep clicking, I'm going to hide! Just kidding, I love hanging out with you. (•◡•)/",
-        "Focus, Senpai! We have an anime list to finish! 😤",
-        "Is this what they call 'user engagement'? I feel very engaged! (✿◕‿◕)"
-    ], []);
+const FALLBACK_TALKING_TIPS: TalkingTips = {
+  message: {
+    default: ['Welcome to CryoAnime, Senpai!', 'Find your next favorite anime on CryoAnime!'],
+    welcome: 'Welcome to CryoAnime, Senpai!',
+    hoverBody: 'That tickles, Senpai!',
+    tapBody: 'Kyaaa! Please be gentle!',
+    visibilitychange: 'Welcome back, Senpai!',
+  },
+}
 
-    const activeTextRef = useRef(quotes[0]);
+const pickTalkingText = (value: string | string[] | undefined, fallback: string): string => {
+  const choices = Array.isArray(value) ? value : value ? [value] : []
+  return choices[Math.floor(Math.random() * choices.length)] ?? fallback
+}
 
-    const defaultSettings: Live2DSettings = useMemo(() => ({
-        model: {
-            jsonPath: 'https://cdn.jsdelivr.net/gh/xiaoski/live2d_models_collection/models/koharu/koharu.model.json',
-            scale: 0.8,
-            position: 'right',
-            width: 150,
-            height: 300,
-            hOffset: 20,
-            vOffset: 20
-        },
-        display: {
-            position: 'right',
-            width: 150,
-            height: 300,
-            hOffset: 20,
-            vOffset: 20
-        },
-        mobile: { show: true, scale: 0.5 },
-        react: { opacityDefault: 0.7, opacityOnHover: 0.2 },
-        tips: {
-            welcomeTips: { text: ' ', duration: 1 },
-            copyTips: { text: ' ', duration: 1 },
-            clickTips: [' '],
-            idleTips: { text: [' '], duration: 1 }
-        },
-        showToolMenu: true,
-        showHitAreaFrames: false
-    }), []);
+const loadTalkingTips = async (): Promise<TalkingTips> => {
+  try {
+    const response = await fetch('/waifu-tips.json', { cache: 'no-store' })
+    if (!response.ok) throw new Error('Custom Live2D tips are unavailable')
+    return await response.json() as TalkingTips
+  } catch {
+    return FALLBACK_TALKING_TIPS
+  }
+}
 
-    const mergedSettings = useMemo(() => ({
-        ...defaultSettings,
-        ...settings,
-        model: { ...defaultSettings.model, ...settings.model },
-        display: { ...defaultSettings.display, ...settings.display },
-        mobile: { ...defaultSettings.mobile, ...settings.mobile },
-        react: { ...defaultSettings.react, ...settings.react },
-        tips: { ...defaultSettings.tips, ...settings.tips }
-    }), [defaultSettings, settings]);
+/**
+ * The CDN autoloader starts with its own default tips file. Overlay the
+ * repository-owned messages after the model exists so custom CryoAnime copy
+ * is used for welcome, idle, hover, click, and visibility messages as well.
+ */
+const installCustomTalking = async (signal?: AbortSignal): Promise<void> => {
+  if (customTalkingStarted || signal?.aborted || !hasWidgetElements()) return
+  const tips = await loadTalkingTips()
+  if (customTalkingStarted || signal?.aborted) return
 
-    // Cycle through general quotes periodically
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const randomIndex = Math.floor(Math.random() * quotes.length);
-            activeTextRef.current = quotes[randomIndex];
-            
-            const tips = document.getElementById('waifu-tips');
-            if (tips) {
-                tips.textContent = activeTextRef.current;
-                tips.style.transform = 'translateY(-12px) scale(1.05)';
-                setTimeout(() => {
-                    tips.style.transform = 'translateY(-12px) scale(1)';
-                }, 300);
-            }
-        }, 15000);
+  const tipsNode = document.querySelector<HTMLElement>('#waifu-tips')
+  if (!tipsNode) return
 
-        return () => clearInterval(interval);
-    }, [quotes]);
+  const defaultText = tips.message?.default?.[0] ?? FALLBACK_TALKING_TIPS.message!.default![0]
+  const show = (value: string | string[] | undefined, fallback = defaultText, duration = 6_000) => {
+    const message = pickTalkingText(value, fallback)
+    const node = document.querySelector<HTMLElement>('#waifu-tips')
+    if (!node) return
+    node.textContent = message
+    node.classList.add('waifu-tips-active')
+    window.setTimeout(() => node.classList.remove('waifu-tips-active'), duration)
+  }
 
-    useEffect(() => {
-        const initializeLive2D = async () => {
-            try {
-                if (document.getElementById('live2d')) {
-                    setIsLoaded(true);
-                    onLoad?.();
-                    return;
-                }
+  const mouseover = (event: MouseEvent) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (!target) return
+    for (const entry of tips.mouseover ?? []) {
+      if (!target.closest(entry.selector)) continue
+      // The CDN also listens on window; defer so the repository-owned copy
+      // wins after the external handler has finished.
+      window.setTimeout(() => show(entry.text), 0)
+      return
+    }
+  }
 
-                const loadScript = (src: string): Promise<void> => {
-                    return new Promise((resolve, reject) => {
-                        const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
-                        if (existingScript?.dataset.loaded === 'true') {
-                            resolve();
-                            return;
-                        }
-                        if (existingScript) {
-                            existingScript.addEventListener('load', () => resolve(), { once: true });
-                            existingScript.addEventListener(
-                                'error',
-                                () => reject(new Error(`Failed to load script: ${src}`)),
-                                { once: true }
-                            );
-                            return;
-                        }
-                        const script = document.createElement('script');
-                        script.src = src;
-                        script.async = true;
-                        script.onload = () => {
-                            script.dataset.loaded = 'true';
-                            resolve();
-                        };
-                        script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
-                        document.head.appendChild(script);
-                    });
-                };
+  const click = (event: MouseEvent) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (!target) return
+    for (const entry of tips.click ?? []) {
+      if (!target.closest(entry.selector)) continue
+      // The CDN also listens on window; defer so the repository-owned copy
+      // wins after the external handler has finished.
+      window.setTimeout(() => show(entry.text), 0)
+      return
+    }
+  }
 
-                await loadScript('https://fastly.jsdelivr.net/npm/live2d-widgets@1.0.1/dist/autoload.js');
+  const onVisibilityChange = () => {
+    if (!document.hidden) window.setTimeout(() => show(tips.message?.visibilitychange), 0)
+  }
+  const onHoverBody = () => show(tips.message?.hoverBody)
+  const onTapBody = () => show(tips.message?.tapBody)
+  const idle = window.setInterval(() => show(tips.message?.default), 20_000)
 
-                let attempts = 0;
-                const maxAttempts = 80;
-                const baseDelay = 100;
+  document.addEventListener('mouseover', mouseover)
+  document.addEventListener('click', click)
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener('live2d:hoverbody', onHoverBody)
+  window.addEventListener('live2d:tapbody', onTapBody)
+  show(tips.message?.welcome ?? tips.message?.default)
+  customTalkingStarted = true
 
-                const checkWidget = () => {
-                    const canvas = document.getElementById('live2d');
-                    const waifu = document.getElementById('waifu');
-                    if (canvas && waifu) {
-                        setIsLoaded(true);
-                        onLoad?.();
-                        return;
-                    }
+  // The widget is intentionally persistent across route changes. Keep the
+  // singleton interval/listeners alive with it and silence the unused handle
+  // for linters without exposing a second cleanup path that could duplicate
+  // the external widget's own handlers.
+  void idle
+}
 
-                    attempts++;
-                    if (attempts < maxAttempts) {
-                        retryTimeoutRef.current = setTimeout(checkWidget, baseDelay);
-                    } else {
-                        const loadError = new Error('Live2D widget failed to initialize.');
-                        setError(loadError);
-                        onError?.(loadError);
-                    }
-                };
+const ensureCustomTalking = (signal?: AbortSignal): Promise<void> => {
+  if (customTalkingStarted) return Promise.resolve()
+  if (customTalkingPromise) return customTalkingPromise
+  customTalkingPromise = installCustomTalking(signal).finally(() => {
+    if (!customTalkingStarted) customTalkingPromise = undefined
+  })
+  return customTalkingPromise
+}
 
-                checkWidget();
-            } catch (err) {
-                const error = err instanceof Error ? err : new Error('Unknown error');
-                setError(error);
-                onError?.(error);
-            }
-        };
+const hasWidgetElements = (): boolean => WIDGET_SELECTORS.every(selector => document.querySelector(selector) !== null)
 
-        let startTimeout: ReturnType<typeof setTimeout> | null = null;
-        const startAfterHydration = () => {
-            startTimeout = setTimeout(initializeLive2D, 750);
-        };
+/**
+ * Wait for the external widget to add its toggle, root, and canvas. The
+ * upstream loader performs more work after its script load event, so checking
+ * the DOM is more reliable than treating that event as initialization.
+ */
+export const waitForLive2dWidget = (timeoutMs = WIDGET_WAIT_MS, signal?: AbortSignal): Promise<boolean> => {
+  if (hasWidgetElements()) return Promise.resolve(true)
 
-        if (document.readyState === 'complete') {
-            startAfterHydration();
-        } else {
-            window.addEventListener('load', startAfterHydration, { once: true });
-        }
+  return new Promise(resolve => {
+    let finished = false
+    let timeoutId: number | undefined
+    const observer = new MutationObserver(() => {
+      if (hasWidgetElements()) finish(true)
+    })
 
-        return () => {
-            window.removeEventListener('load', startAfterHydration);
-            if (startTimeout) clearTimeout(startTimeout);
-            if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
-        };
-    }, [onLoad, onError]);
-
-    useEffect(() => {
-        const handleWaifuClick = (e: MouseEvent) => {
-            e.stopPropagation();
-            const randomIndex = Math.floor(Math.random() * clickQuotes.length);
-            activeTextRef.current = clickQuotes[randomIndex];
-            const tips = document.getElementById('waifu-tips');
-            if (tips) {
-                tips.textContent = activeTextRef.current;
-                tips.style.transform = 'translateY(-12px) scale(1.1) rotate(2deg)';
-                setTimeout(() => {
-                    tips.style.transform = 'translateY(-12px) scale(1) rotate(0deg)';
-                }, 300);
-            }
-        };
-
-        const applyWidgetOverrides = () => {
-            const waifu = document.getElementById('waifu');
-            const tips = document.getElementById('waifu-tips');
-            const toggle = document.getElementById('waifu-toggle');
-            const tool = document.getElementById('waifu-tool');
-
-            if (waifu) {
-                if (waifu.style.left !== 'auto') waifu.style.left = 'auto';
-                if (waifu.style.right !== '20px') waifu.style.right = '20px';
-
-                const canvas = document.getElementById('live2d') || waifu;
-                if (!canvas.getAttribute('data-has-click-listener')) {
-                    canvas.addEventListener('click', handleWaifuClick as any);
-                    canvas.setAttribute('data-has-click-listener', 'true');
-                }
-            }
-
-            if (tips) {
-                if (tips.textContent !== activeTextRef.current) {
-                    tips.textContent = activeTextRef.current;
-                }
-                if (tips.style.left !== 'auto') tips.style.left = 'auto';
-                if (tips.style.right !== '20px') tips.style.right = '20px';
-            }
-
-            if (toggle) {
-                if (toggle.style.left !== 'auto') toggle.style.left = 'auto';
-                if (toggle.style.right !== '0px') toggle.style.right = '0';
-            }
-
-            if (tool) {
-                if (tool.style.left !== '-10px') tool.style.left = '-10px';
-                if (tool.style.right !== 'auto') tool.style.right = 'auto';
-            }
-        };
-
-        applyWidgetOverrides();
-        const observer = new MutationObserver(applyWidgetOverrides);
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-            characterData: true
-        });
-
-        return () => observer.disconnect();
-    }, [clickQuotes]);
-
-    if (error && !isLoaded) {
-        return null;
+    const finish = (ready: boolean) => {
+      if (finished) return
+      finished = true
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+      observer.disconnect()
+      signal?.removeEventListener('abort', onAbort)
+      resolve(ready)
     }
 
-    return null;
-};
+    const onAbort = () => finish(false)
+    if (signal?.aborted) {
+      finish(false)
+      return
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+    timeoutId = window.setTimeout(() => finish(hasWidgetElements()), timeoutMs)
 
-export default memo(Live2dWaifu, (prevProps, nextProps) => {
-    return JSON.stringify(prevProps.settings) === JSON.stringify(nextProps.settings);
-});
+    observer.observe(document.body, { childList: true, subtree: true })
+  })
+}
+
+const loadWidgetScript = (): Promise<void> => {
+  const existingScript = document.querySelector<HTMLScriptElement>('script[data-cryo-live2d]')
+    ?? Array.from(document.scripts).find(script => script.src === WIDGET_SCRIPT)
+  if (scriptPromise && existingScript) return scriptPromise
+  // A test, hot reload, or host application may remove the old tag while
+  // this module instance survives. Do not treat the stale promise as loaded.
+  if (scriptPromise && !existingScript) scriptPromise = undefined
+
+  scriptPromise = new Promise((resolve, reject) => {
+    const existing = existingScript
+    if (existing?.dataset.loaded === 'true') {
+      resolve()
+      return
+    }
+
+    const script = existing ?? document.createElement('script')
+    if (!existing) {
+      script.src = WIDGET_SCRIPT
+      script.async = true
+      script.integrity = SCRIPT_INTEGRITY
+      script.crossOrigin = 'anonymous'
+      script.referrerPolicy = 'no-referrer'
+      script.dataset.cryoLive2d = 'true'
+    } else if (!script.dataset.cryoLive2d) {
+      // Adopt a matching script that was injected by the host shell so a
+      // second copy is never added during navigation or hot reload.
+      script.dataset.cryoLive2d = 'true'
+    }
+
+    const onLoad = () => {
+      script.dataset.loaded = 'true'
+      resolve()
+    }
+    const onError = () => {
+      script.removeEventListener('load', onLoad)
+      script.removeEventListener('error', onError)
+      // Allow a later mount to make one clean retry rather than reusing a
+      // permanently rejected promise. The failed tag is not useful anymore.
+      if (script.parentElement) script.remove()
+      scriptPromise = undefined
+      reject(new Error('Live2D widget script failed to load'))
+    }
+
+    script.addEventListener('load', onLoad, { once: true })
+    script.addEventListener('error', onError, { once: true })
+    if (!existing) document.head.appendChild(script)
+  })
+
+  return scriptPromise
+}
+
+const initializeFallbackWidget = async (signal?: AbortSignal): Promise<boolean> => {
+  if (hasWidgetElements()) return true
+  if (signal?.aborted || fallbackInitializationStarted || typeof window.initWidget !== 'function') return false
+
+  fallbackInitializationStarted = true
+  try {
+    window.initWidget(WIDGET_CONFIG)
+  } catch {
+    // An unavailable model CDN should never take down the host application.
+    return false
+  }
+
+  return waitForLive2dWidget(FALLBACK_WAIT_MS, signal)
+}
+
+export const isLive2dEligible = (): boolean => {
+  if (document.hidden) return false
+  if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false
+  const navigatorWithHints = navigator as Navigator & {
+    deviceMemory?: number
+    connection?: { saveData?: boolean }
+  }
+  if (/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(navigatorWithHints.userAgent)) return false
+  const hardwareConcurrency = navigatorWithHints.hardwareConcurrency || 4
+  const deviceMemory = navigatorWithHints.deviceMemory ?? 4
+  const isLowEnd = (hardwareConcurrency < 4 && deviceMemory <= 4) || deviceMemory <= 2
+  if (isLowEnd) return false
+  if (navigatorWithHints.connection?.saveData) return false
+  try {
+    if (window.localStorage.getItem('cryoanime-live2d') === 'off') return false
+  } catch {
+    // A storage restriction is not an opt-out; keep the enhancement usable.
+  }
+  return true
+}
+
+export default function Live2dWaifu() {
+  useEffect(() => {
+    let cancelled = false
+    let idleId: number | undefined
+    let fallbackId: number | undefined
+    let visibilityHandler: (() => void) | undefined
+    const abortController = new AbortController()
+
+    const start = async () => {
+      if (cancelled || !isLive2dEligible()) return
+
+      try {
+        if (hasWidgetElements()) {
+          await ensureCustomTalking(abortController.signal)
+          return
+        }
+
+        await loadWidgetScript()
+        if (cancelled) return
+
+        // autoload.js normally initializes itself after loading its modules.
+        // If that asynchronous step did not produce any widget DOM, use the
+        // public initializer explicitly with the app-owned tips file.
+        const automaticallyReady = await waitForLive2dWidget(WIDGET_WAIT_MS, abortController.signal)
+        if (cancelled) return
+        if (automaticallyReady) {
+          await ensureCustomTalking(abortController.signal)
+          return
+        }
+
+        const fallbackReady = await initializeFallbackWidget(abortController.signal)
+        if (!cancelled && fallbackReady) await ensureCustomTalking(abortController.signal)
+      } catch {
+        // Live2D is an enhancement; a blocked CDN must not affect the page.
+      }
+    }
+
+    const schedule = () => {
+      if (!isLive2dEligible()) return
+      const idleWindow = window as Window & {
+        requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+        cancelIdleCallback?: (id: number) => void
+      }
+      if (idleWindow.requestIdleCallback) {
+        idleId = idleWindow.requestIdleCallback(() => { void start() }, { timeout: 4_000 })
+      } else {
+        fallbackId = window.setTimeout(() => { void start() }, 2_000)
+      }
+    }
+
+    if (document.hidden) {
+      visibilityHandler = () => {
+        if (!document.hidden) {
+          document.removeEventListener('visibilitychange', visibilityHandler!)
+          schedule()
+        }
+      }
+      document.addEventListener('visibilitychange', visibilityHandler)
+    } else {
+      schedule()
+    }
+
+    return () => {
+      cancelled = true
+      abortController.abort()
+      const idleWindow = window as Window & { cancelIdleCallback?: (id: number) => void }
+      if (idleId !== undefined) idleWindow.cancelIdleCallback?.(idleId)
+      if (fallbackId !== undefined) window.clearTimeout(fallbackId)
+      if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler)
+    }
+  }, [])
+
+  return null
+}

@@ -1,42 +1,41 @@
 'use client'
 
 import React from 'react'
-import Header from '@/components/layout/header'
-import Footer from '@/components/layout/footer'
 import { AnimeGrid } from '@/components/anime_cards'
 import { useLibrary } from '@/hooks/useLibrary'
+import { getAnimeContentRating } from '@/lib/anime-utils'
+import { isContentAllowed } from '@/lib/contentRatings'
 import { 
   Container, 
   Box, 
   Text, 
-  Tabs, 
   Flex,
   Heading
-} from '@radix-ui/themes'
+} from '@/components/ui-primitives'
+import { Tabs } from '@/components/ui-tabs'
 import { Heart, Bookmark, Library as LibraryIcon } from 'lucide-react'
+import { useContentPreferences } from '@/components/content-preference-provider'
 
 export default function LibraryPage() {
   const { favorites, watchlist } = useLibrary()
+  const { preferences: contentPreferences } = useContentPreferences()
+
+  const visibleFavorites = favorites.filter(anime => isContentAllowed(getAnimeContentRating(anime), contentPreferences))
+  const visibleWatchlist = watchlist.filter(anime => isContentAllowed(getAnimeContentRating(anime), contentPreferences))
 
   return (
     <>
-      <Header />
-      <main style={{ backgroundColor: '#0f172a', minHeight: '100vh', paddingTop: '5rem' }}>
-        <Container size="4" px="3" py={{ initial: '12', md: '10' }} className="page-enter">
+      <main className="page-shell">
+        <Container size="4" px="3" py={{ initial: '7', md: '9' }} className="page-enter">
           {/* Page Header */}
-          <Box mb="8" style={{ textAlign: 'center' }}>
+          <Box mb="8" className="page-heading">
             <Flex align="center" justify="center" gap="3" mb="4">
               <LibraryIcon size={32} style={{ color: '#3b82f6' }} />
-              <h1 style={{
-                fontSize: 'var(--font-size-8)',
-                fontWeight: 'bold',
-                color: 'white',
-                margin: 0
-              }}>
+              <h1 className="page-title">
                 My Library
               </h1>
             </Flex>
-            <Text as="p" size="4" style={{ color: '#cbd5e1', maxWidth: '600px', margin: '0 auto' }}>
+            <Text as="p" size="4" className="page-description">
               Your personal collection of favorites and saved anime
             </Text>
           </Box>
@@ -47,11 +46,11 @@ export default function LibraryPage() {
               <Tabs.List size="2" style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)', padding: '4px', borderRadius: '12px' }}>
                 <Tabs.Trigger value="watchlist" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <Bookmark size={16} />
-                  Watchlist ({watchlist.length})
+                  Watchlist ({visibleWatchlist.length})
                 </Tabs.Trigger>
                 <Tabs.Trigger value="favorites" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <Heart size={16} />
-                  Favorites ({favorites.length})
+                  Favorites ({visibleFavorites.length})
                 </Tabs.Trigger>
               </Tabs.List>
             </Flex>
@@ -59,8 +58,8 @@ export default function LibraryPage() {
             <Box mt="6">
               <Tabs.Content value="watchlist">
                 <Box>
-                  {watchlist.length > 0 ? (
-                    <AnimeGrid animeList={watchlist} />
+                  {visibleWatchlist.length > 0 ? (
+                    <AnimeGrid animeList={visibleWatchlist} />
                   ) : (
                     <EmptyState 
                       icon={<Bookmark size={48} />} 
@@ -73,8 +72,8 @@ export default function LibraryPage() {
 
               <Tabs.Content value="favorites">
                 <Box>
-                  {favorites.length > 0 ? (
-                    <AnimeGrid animeList={favorites} />
+                  {visibleFavorites.length > 0 ? (
+                    <AnimeGrid animeList={visibleFavorites} />
                   ) : (
                     <EmptyState 
                       icon={<Heart size={48} />} 
@@ -88,7 +87,6 @@ export default function LibraryPage() {
           </Tabs.Root>
         </Container>
       </main>
-      <Footer />
     </>
   )
 }

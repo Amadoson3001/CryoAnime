@@ -1,168 +1,85 @@
-'use client'
-import React, { memo } from 'react'
 import Image from 'next/image'
-import { Star, Calendar } from 'lucide-react'
-import { AnimeData, formatScore, getOptimizedImageUrl } from '@/lib/api'
 import Link from 'next/link'
-import {
-  Box,
-  Card,
-  Flex,
-  Grid,
-  Text,
-  Skeleton
-} from '@radix-ui/themes'
+import { Calendar, Star } from 'lucide-react'
+import type { AnimeListItem } from '@/lib/anime-models'
+import { formatScore, getOptimizedImageUrl } from '@/lib/anime-utils'
+import { Grid } from '@/components/ui-primitives'
 
 interface AnimeCardProps {
-  anime: AnimeData
+  anime: AnimeListItem
   priority?: boolean
 }
 
-const AnimeCard: React.FC<AnimeCardProps> = ({ anime, priority = false }) => {
-  const imageUrl = getOptimizedImageUrl(anime)
+const AnimeCard = ({ anime, priority = false }: AnimeCardProps) => {
+  const title = anime.title_english || anime.title
 
   return (
     <Link
       href={`/anime/${anime.mal_id}`}
       prefetch={false}
-      style={{ textDecoration: 'none' }}
       className="anime-grid-item"
+      aria-label={`${title}${anime.year ? `, ${anime.year}` : ''}`}
     >
-      <Card
-        asChild
-        className="anime-card"
-        style={{
-          position: 'relative',
-          height: '420px',
-          overflow: 'hidden',
-          backgroundColor: '#1e293b',
-          border: '1px solid #334155',
-          cursor: 'pointer'
-        }}
-      >
-        <div>
-          <Image
-            src={imageUrl}
-            alt={anime.title}
-            fill
-            className="anime-card-image"
-            style={{
-              objectFit: 'cover'
-            }}
-            priority={priority}
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1536px) 20vw, 16vw"
-            quality={65}
-            loading={priority ? 'eager' : 'lazy'}
-          />
-          <Box
-            position="absolute"
-            bottom="0"
-            left="0"
-            right="0"
-            p="3"
-            className="anime-card-overlay"
-            style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,1) 20%, rgba(0,0,0,0.7) 70%, transparent 100%)',
-              color: 'white'
-            }}
-          >
-            <Text as="p" size="3" weight="bold" truncate>
-              {anime.title_english || anime.title}
-            </Text>
-            <Flex align="center" gap="3" mt="1">
-              {anime.score && (
-                <Flex align="center" gap="1">
-                  <Star size={14} style={{ color: '#fbbf24' }} />
-                  <Text size="1">{formatScore(anime.score)}</Text>
-                </Flex>
-              )}
-              <Flex align="center" gap="1">
-                <Calendar size={14} style={{ color: '#94a3b8' }} />
-                <Text size="1" style={{ color: '#cbd5e1' }}>{anime.year || 'TBA'}</Text>
-              </Flex>
-            </Flex>
-            <Text
-              as="p"
-              size="1"
-              color="gray"
-              mt="2"
-              className="anime-card-synopsis"
-              style={{
-                overflow: 'hidden'
-              }}
-            >
-              {anime.synopsis
-                ? anime.synopsis.length > 150
-                  ? `${anime.synopsis.substring(0, 150)}...`
-                  : anime.synopsis
-                : 'No synopsis available.'}
-            </Text>
-          </Box>
+      <article className="anime-card">
+        <Image
+          src={getOptimizedImageUrl(anime)}
+          alt=""
+          fill
+          className="anime-card-image"
+          priority={priority}
+          sizes="(max-width: 639px) 44vw, (max-width: 767px) 30vw, (max-width: 1023px) 22vw, (max-width: 1279px) 18vw, 220px"
+          quality={65}
+        />
+        <div className="anime-card-scrim" aria-hidden="true" />
+        <div className="anime-card-topline">
+          <span>{anime.type || 'Anime'}</span>
+          {anime.status && <span className="anime-card-status">{anime.status.replace('Currently ', '')}</span>}
         </div>
-      </Card>
+        <div className="anime-card-overlay">
+          <h3 title={title}>{title}</h3>
+          <div className="anime-card-meta">
+            {anime.score ? (
+              <span className="anime-card-score">
+                <Star size={13} aria-hidden="true" />
+                {formatScore(anime.score)}
+              </span>
+            ) : <span>Not rated</span>}
+            <span>
+              <Calendar size={13} aria-hidden="true" />
+              {anime.year || 'TBA'}
+            </span>
+          </div>
+        </div>
+      </article>
     </Link>
   )
 }
 
-// Memoize AnimeCard component to prevent unnecessary re-renders
-const MemoizedAnimeCard = memo(AnimeCard, (prevProps, nextProps) => {
-  // Custom comparison function to check if props have changed
-  return (
-    prevProps.anime.mal_id === nextProps.anime.mal_id &&
-    prevProps.anime.title === nextProps.anime.title &&
-    prevProps.anime.title_english === nextProps.anime.title_english &&
-    prevProps.anime.score === nextProps.anime.score &&
-    prevProps.anime.year === nextProps.anime.year &&
-    prevProps.priority === nextProps.priority
-  );
-});
-
 interface AnimeGridProps {
-  animeList: AnimeData[]
+  animeList: AnimeListItem[]
   loading?: boolean
   error?: string | null
+  priorityCount?: number
 }
 
-const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error = null }) => {
+const AnimeGrid = ({ animeList, loading = false, error = null, priorityCount = 0 }: AnimeGridProps) => {
   if (error) {
     return (
-      <Box style={{ textAlign: 'center' }} py="12">
-        <Box
-          style={{
-            backgroundColor: '#fee2e2',
-            border: '1px solid #fecaca',
-            borderRadius: 'var(--radius-3)',
-            padding: 'var(--space-6)',
-            maxWidth: '400px',
-            margin: '0 auto'
-          }}
-        >
-          <Text as="p" size="3" weight="bold" mb="2" style={{ color: '#b91c1c' }}>
-            Error loading anime
-          </Text>
-          <Text as="p" size="2" style={{ color: '#dc2626' }}>
-            {error}
-          </Text>
-        </Box>
-      </Box>
+      <div className="feedback-state feedback-state-error" role="alert">
+        <strong>We couldn&apos;t load this list</strong>
+        <p>{error}</p>
+      </div>
     )
   }
 
   if (loading) {
     return (
-      <Grid
-        columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }}
-        gap={{ initial: '3', md: '5' }}
-      >
+      <Grid className="anime-grid" columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }} gap={{ initial: '3', md: '5' }} aria-hidden="true">
         {Array.from({ length: 12 }).map((_, index) => (
-          <Card key={index} style={{ overflow: 'hidden', backgroundColor: '#1e293b', border: '1px solid #334155' }}>
-            <Skeleton style={{ aspectRatio: '3/4', backgroundColor: '#334155' }} />
-            <Box p="4" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Skeleton width="100%" height="16px" style={{ backgroundColor: '#334155' }} />
-              <Skeleton width="75%" height="12px" style={{ backgroundColor: '#334155' }} />
-              <Skeleton width="50%" height="12px" style={{ backgroundColor: '#334155' }} />
-            </Box>
-          </Card>
+          <div className="anime-card anime-card-skeleton" key={index}>
+            <span />
+            <span />
+          </div>
         ))}
       </Grid>
     )
@@ -170,38 +87,20 @@ const AnimeGrid: React.FC<AnimeGridProps> = ({ animeList, loading = false, error
 
   if (animeList.length === 0) {
     return (
-      <Box style={{ textAlign: 'center' }} py="12">
-        <Box
-          style={{
-            backgroundColor: '#1e293b',
-            borderRadius: 'var(--radius-3)',
-            padding: 'var(--space-8)',
-            maxWidth: '400px',
-            margin: '0 auto',
-            border: '1px solid #334155'
-          }}
-        >
-          <Text as="p" size="3" weight="bold" mb="2" style={{ color: 'white' }}>
-            No anime found
-          </Text>
-          <Text as="p" size="2" style={{ color: '#94a3b8' }}>
-            Try adjusting your search criteria.
-          </Text>
-        </Box>
-      </Box>
+      <div className="feedback-state">
+        <strong>No anime found</strong>
+        <p>Try changing the filters or using a broader search.</p>
+      </div>
     )
   }
 
   return (
-    <Grid
-      columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }}
-      gap={{ initial: '3', md: '5' }}
-    >
+    <Grid className="anime-grid" columns={{ initial: '2', sm: '3', md: '4', lg: '5', xl: '6' }} gap={{ initial: '3', md: '5' }}>
       {animeList.map((anime, index) => (
-        <MemoizedAnimeCard key={`${anime.mal_id}-${index}`} anime={anime} priority={index < 2} />
+        <AnimeCard key={anime.mal_id} anime={anime} priority={index < priorityCount} />
       ))}
     </Grid>
   )
 }
 
-export { AnimeCard, AnimeGrid, MemoizedAnimeCard }
+export { AnimeCard, AnimeGrid }
